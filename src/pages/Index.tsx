@@ -4,13 +4,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Download, Sparkles } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 
 const Index = () => {
   const [prompt, setPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
-  const navigate = useNavigate();
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
@@ -102,17 +100,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 relative overflow-hidden">
       {/* Sign out button */}
-      <div className="absolute right-4 top-4 z-20">
-        <Button
-          variant="outline"
-          onClick={async () => {
-            await supabase.auth.signOut();
-            navigate("/login", { replace: true });
-          }}
-        >
-          Sign out
-        </Button>
-      </div>
+      {/* Auth temporarily disabled: no sign-out button */}
       {/* Animated gradient background */}
       <div className="absolute inset-0 opacity-20">
         <div className="absolute top-0 -left-4 w-96 h-96 bg-primary rounded-full mix-blend-multiply filter blur-3xl animate-pulse" />
