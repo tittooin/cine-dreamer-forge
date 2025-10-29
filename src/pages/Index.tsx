@@ -39,16 +39,62 @@ const Index = () => {
     }
   };
 
-  const handleDownload = () => {
+  const watermarkSrc = `${import.meta.env.BASE_URL}logo.png`;
+
+  const handleDownload = async () => {
     if (!generatedImage) return;
 
-    const link = document.createElement("a");
-    link.href = generatedImage;
-    link.download = `ai-generated-${Date.now()}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success("Image downloaded!");
+    try {
+      const baseImg = new Image();
+      baseImg.crossOrigin = "anonymous";
+      baseImg.src = generatedImage;
+      await new Promise<void>((resolve, reject) => {
+        baseImg.onload = () => resolve();
+        baseImg.onerror = () => reject(new Error("Failed to load base image"));
+      });
+
+      const wmImg = new Image();
+      wmImg.crossOrigin = "anonymous";
+      wmImg.src = watermarkSrc;
+      await new Promise<void>((resolve, reject) => {
+        wmImg.onload = () => resolve();
+        wmImg.onerror = () => reject(new Error("Failed to load watermark"));
+      });
+
+      const canvas = document.createElement("canvas");
+      canvas.width = baseImg.naturalWidth;
+      canvas.height = baseImg.naturalHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Canvas not supported");
+
+      ctx.drawImage(baseImg, 0, 0);
+      const margin = Math.floor(canvas.width * 0.02);
+      const wmWidth = Math.floor(canvas.width * 0.12);
+      const wmAspect = wmImg.naturalWidth / wmImg.naturalHeight;
+      const wmHeight = Math.floor(wmWidth / wmAspect);
+      const x = canvas.width - wmWidth - margin;
+      const y = margin;
+      ctx.globalAlpha = 0.85;
+      ctx.drawImage(wmImg, x, y, wmWidth, wmHeight);
+
+      const dataUrl = canvas.toDataURL("image/png");
+      const link = document.createElement("a");
+      link.href = dataUrl;
+      link.download = `ai-generated-${Date.now()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success("Watermarked image downloaded!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to watermark. Downloading original.");
+      const link = document.createElement("a");
+      link.href = generatedImage;
+      link.download = `ai-generated-${Date.now()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
   return (
@@ -111,6 +157,12 @@ const Index = () => {
                 src={generatedImage}
                 alt="Generated"
                 className="w-full h-auto rounded-xl shadow-2xl"
+              />
+              {/* Watermark overlay (top-right) */}
+              <img
+                src={watermarkSrc}
+                alt="watermark"
+                className="absolute top-3 right-3 w-12 h-12 opacity-80 select-none pointer-events-none"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl flex items-end justify-center pb-6">
                 <Button
