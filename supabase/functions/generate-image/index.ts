@@ -32,7 +32,7 @@ serve(async (req) => {
 
     // You can swap the model below to any text-to-image model supported
     // by the Hugging Face Inference API.
-    const model = "black-forest-labs/FLUX.1-dev";
+    const model = "black-forest-labs/FLUX.1-schnell";
 
     const response = await fetch(`https://api-inference.huggingface.co/models/${model}`, {
       method: "POST",
@@ -50,7 +50,10 @@ serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Hugging Face error:", response.status, errorText);
-      throw new Error("Failed to generate image");
+      return new Response(
+        JSON.stringify({ error: "Hugging Face error", status: response.status, detail: errorText }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
     // HF returns binary image data; convert to a data URL so the frontend
     // can display and download it without needing storage.
