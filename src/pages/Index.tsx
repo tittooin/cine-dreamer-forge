@@ -69,12 +69,12 @@ const Index = () => {
 
       ctx.drawImage(baseImg, 0, 0);
       const margin = Math.floor(canvas.width * 0.02);
-      const wmWidth = Math.floor(canvas.width * 0.12);
+      const wmWidth = Math.floor(canvas.width * 0.08);
       const wmAspect = wmImg.naturalWidth / wmImg.naturalHeight;
       const wmHeight = Math.floor(wmWidth / wmAspect);
       const x = canvas.width - wmWidth - margin;
       const y = margin;
-      ctx.globalAlpha = 0.85;
+      ctx.globalAlpha = 0.6;
       ctx.drawImage(wmImg, x, y, wmWidth, wmHeight);
 
       const dataUrl = canvas.toDataURL("image/png");
@@ -162,7 +162,7 @@ const Index = () => {
               <img
                 src={watermarkSrc}
                 alt="watermark"
-                className="absolute top-3 right-3 w-12 h-12 opacity-80 select-none pointer-events-none"
+                className="absolute top-3 right-3 w-10 h-10 opacity-60 select-none pointer-events-none"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl flex items-end justify-center pb-6">
                 <Button
