@@ -23,69 +23,50 @@ serve(async (req) => {
       );
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const HF_API_KEY = Deno.env.get("HUGGINGFACE_API_KEY");
+    if (!HF_API_KEY) {
+      throw new Error("HUGGINGFACE_API_KEY is not configured");
     }
 
-    console.log("Generating image with prompt:", prompt);
+    console.log("Generating image via Hugging Face with prompt:", prompt);
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // You can swap the model below to any text-to-image model supported
+    // by the Hugging Face Inference API.
+    const model = "black-forest-labs/FLUX.1-dev";
+
+    const response = await fetch(`https://api-inference.huggingface.co/models/${model}`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${HF_API_KEY}`,
         "Content-Type": "application/json",
+        Accept: "image/png",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image-preview",
-        messages: [
-          {
-            role: "user",
-            content: `Generate a highly realistic, cinematic quality image: ${prompt}`,
-          },
-        ],
-        modalities: ["image", "text"],
+        inputs: prompt,
+        options: { wait_for_model: true },
       }),
     });
 
     if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
-          { 
-            status: 429,
-            headers: { ...corsHeaders, "Content-Type": "application/json" }
-          }
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Payment required. Please add credits to your workspace." }),
-          { 
-            status: 402,
-            headers: { ...corsHeaders, "Content-Type": "application/json" }
-          }
-        );
-      }
       const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
+      console.error("Hugging Face error:", response.status, errorText);
       throw new Error("Failed to generate image");
     }
-
-    const data = await response.json();
-    console.log("Image generation response received");
-
-    const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-    
-    if (!imageUrl) {
-      throw new Error("No image returned from AI");
+    // HF returns binary image data; convert to a data URL so the frontend
+    // can display and download it without needing storage.
+    const arrayBuffer = await response.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuffer);
+    let binary = "";
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
     }
+    const base64 = btoa(binary);
+    const dataUrl = `data:image/png;base64,${base64}`;
 
+    console.log("Image generation completed (data URL length):", dataUrl.length);
     return new Response(
-      JSON.stringify({ imageUrl }),
-      { 
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      }
+      JSON.stringify({ imageUrl: dataUrl }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("Error in generate-image function:", error);
