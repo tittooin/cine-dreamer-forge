@@ -37,10 +37,42 @@ serve(async (req) => {
     // Per-user quota limiting (soft enforcement). Requires a table `image_usage`:
     //   user_id text, period_start date, count int, unique(user_id, period_start)
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const DAILY_LIMIT = Number(Deno.env.get("DAILY_IMAGE_LIMIT") || 50);
 
-    let userId = req.headers.get("x-user-id") || "anonymous";
+    // Require logged-in user: validate JWT from Authorization header via Supabase
+    let userId: string | null = null;
+    const authHeader = req.headers.get("Authorization") ?? "";
+    if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+      try {
+        const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+          global: { headers: { Authorization: authHeader } },
+          auth: { persistSession: false },
+        });
+        const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+        if (authError || !user) {
+          return new Response(
+            JSON.stringify({ error: "Unauthorized", detail: "Login required" }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        userId = user.id;
+      } catch (e) {
+        console.warn("Auth check failed:", e);
+        return new Response(
+          JSON.stringify({ error: "Unauthorized", detail: "Login required" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    } else {
+      // If envs missing, deny by default to enforce login requirement
+      return new Response(
+        JSON.stringify({ error: "Unauthorized", detail: "Login required" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const today = new Date();
     const periodStart = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()))
       .toISOString()
@@ -115,7 +147,7 @@ serve(async (req) => {
     console.log("Image generation completed (data URL length):", dataUrl.length);
 
     // After success, increment usage counter (best-effort)
-    if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+    if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY && userId) {
       try {
         const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
           auth: { persistSession: false },

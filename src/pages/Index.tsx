@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
@@ -9,8 +9,51 @@ const Index = () => {
   const [prompt, setPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    const init = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (mounted) setUserEmail(data.session?.user?.email ?? null);
+    };
+    init();
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserEmail(session?.user?.email ?? null);
+    });
+    return () => {
+      mounted = false;
+      sub.subscription?.unsubscribe();
+    };
+  }, []);
+
+  const handleSignInGoogle = async () => {
+    const redirectTo = window.location.origin;
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo },
+    });
+    if (error) {
+      toast.error("Google sign-in failed");
+      console.error(error);
+    }
+  };
+
+  const handleSignOut = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast.error("Sign out failed");
+      console.error(error);
+    } else {
+      toast.success("Signed out");
+    }
+  };
 
   const handleGenerate = async () => {
+    if (!userEmail) {
+      toast.error("Please login with Google first");
+      return;
+    }
     if (!prompt.trim()) {
       toast.error("Please enter a prompt");
       return;
@@ -99,8 +142,17 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 relative overflow-hidden">
-      {/* Sign out button */}
-      {/* Auth temporarily disabled: no sign-out button */}
+      {/* Auth header */}
+      <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
+        {userEmail ? (
+          <>
+            <span className="text-sm text-muted-foreground">Logged in as {userEmail}</span>
+            <Button variant="outline" size="sm" onClick={handleSignOut}>Sign out</Button>
+          </>
+        ) : (
+          <Button size="sm" onClick={handleSignInGoogle}>Continue with Google</Button>
+        )}
+      </div>
       {/* Animated gradient background */}
       <div className="absolute inset-0 opacity-20">
         <div className="absolute top-0 -left-4 w-96 h-96 bg-primary rounded-full mix-blend-multiply filter blur-3xl animate-pulse" />
@@ -134,7 +186,7 @@ const Index = () => {
           />
           <Button
             onClick={handleGenerate}
-            disabled={isGenerating || !prompt.trim()}
+            disabled={isGenerating || !prompt.trim() || !userEmail}
             className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-all duration-300 shadow-[0_0_20px_rgba(124,58,237,0.5)] hover:shadow-[0_0_30px_rgba(124,58,237,0.7)]"
           >
             {isGenerating ? (
@@ -145,7 +197,7 @@ const Index = () => {
             ) : (
               <>
                 <Sparkles className="mr-2 h-5 w-5" />
-                Generate Image
+                {userEmail ? "Generate Image" : "Login to Generate"}
               </>
             )}
           </Button>
