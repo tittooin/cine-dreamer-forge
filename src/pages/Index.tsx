@@ -63,8 +63,8 @@ const Index = () => {
       <div className="relative z-10 w-full max-w-4xl space-y-8">
         {/* Header */}
         <div className="text-center space-y-4">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-card border border-border rounded-full">
-            <Sparkles className="w-4 h-4 text-primary" />
+          <div className="inline-flex items-center gap-3 px-4 py-2 bg-card border border-border rounded-full">
+            <img src="/logo.png" alt="TittoosAI logo" className="w-6 h-6 rounded-sm" />
             <span className="text-sm text-muted-foreground">Tittoos AI</span>
           </div>
           <h1 className="text-5xl md:text-7xl font-bold bg-gradient-to-r from-primary via-accent to-primary-glow bg-clip-text text-transparent animate-gradient">
