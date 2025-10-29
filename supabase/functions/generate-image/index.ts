@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -28,16 +29,61 @@ serve(async (req) => {
       throw new Error("HUGGINGFACE_API_KEY is not configured");
     }
 
+    // Optional: Use a dedicated Hugging Face Inference Endpoint if provided
+    // Set `HF_ENDPOINT_URL` and optionally `HF_ENDPOINT_TOKEN` as secrets.
+    const HF_ENDPOINT_URL = Deno.env.get("HF_ENDPOINT_URL");
+    const HF_ENDPOINT_TOKEN = Deno.env.get("HF_ENDPOINT_TOKEN") || HF_API_KEY;
+
+    // Per-user quota limiting (soft enforcement). Requires a table `image_usage`:
+    //   user_id text, period_start date, count int, unique(user_id, period_start)
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const DAILY_LIMIT = Number(Deno.env.get("DAILY_IMAGE_LIMIT") || 50);
+
+    let userId = req.headers.get("x-user-id") || "anonymous";
+    const today = new Date();
+    const periodStart = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()))
+      .toISOString()
+      .slice(0, 10);
+
+    // If Supabase admin creds exist, check usage; otherwise skip gracefully.
+    if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+      try {
+        const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+          auth: { persistSession: false },
+        });
+        const { data, error } = await supabase
+          .from("image_usage")
+          .select("count")
+          .eq("user_id", userId)
+          .eq("period_start", periodStart)
+          .maybeSingle();
+
+        if (!error && data && typeof data.count === "number" && data.count >= DAILY_LIMIT) {
+          return new Response(
+            JSON.stringify({ error: "Rate limit exceeded", userId, periodStart, limit: DAILY_LIMIT }),
+            { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      } catch (e) {
+        console.warn("Quota check skipped:", e);
+      }
+    }
+
     console.log("Generating image via Hugging Face with prompt:", prompt);
 
     // You can swap the model below to any text-to-image model supported
     // by the Hugging Face Inference API.
     const model = "black-forest-labs/FLUX.1-schnell";
 
-    const response = await fetch(`https://api-inference.huggingface.co/models/${model}`, {
+    const hfUrl = HF_ENDPOINT_URL
+      ? HF_ENDPOINT_URL
+      : `https://api-inference.huggingface.co/models/${model}`;
+
+    const response = await fetch(hfUrl, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${HF_API_KEY}`,
+        Authorization: `Bearer ${HF_ENDPOINT_TOKEN}`,
         "Content-Type": "application/json",
         Accept: "image/png",
       },
@@ -67,6 +113,35 @@ serve(async (req) => {
     const dataUrl = `data:image/png;base64,${base64}`;
 
     console.log("Image generation completed (data URL length):", dataUrl.length);
+
+    // After success, increment usage counter (best-effort)
+    if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+      try {
+        const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+          auth: { persistSession: false },
+        });
+        // Upsert: if row exists, increment; else create with count=1
+        const { data, error } = await supabase
+          .from("image_usage")
+          .select("count")
+          .eq("user_id", userId)
+          .eq("period_start", periodStart)
+          .maybeSingle();
+        if (!error && data && typeof data.count === "number") {
+          await supabase
+            .from("image_usage")
+            .update({ count: (data.count as number) + 1 })
+            .eq("user_id", userId)
+            .eq("period_start", periodStart);
+        } else {
+          await supabase
+            .from("image_usage")
+            .insert({ user_id: userId, period_start: periodStart, count: 1 });
+        }
+      } catch (e) {
+        console.warn("Quota increment skipped:", e);
+      }
+    }
     return new Response(
       JSON.stringify({ imageUrl: dataUrl }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
