@@ -427,8 +427,8 @@ const Index = () => {
             <img src={`${import.meta.env.BASE_URL}logo.png`} alt="TittoosAI logo" className="w-6 h-6 rounded-sm" />
             <span className="text-sm text-muted-foreground">Tittoos AI</span>
           </div>
-          <h1 className="text-5xl md:text-7xl font-bold bg-gradient-to-r from-primary via-accent to-primary-glow bg-clip-text text-transparent animate-gradient">
-            Create Cinematic Images
+          <h1 className="text-5xl md:text-7xl font-bold text-foreground">
+            Show Your Imagination to The World
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Transform your imagination into realistic, cinematic images with AI

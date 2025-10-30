@@ -17,9 +17,10 @@ All colors MUST be HSL.
     --popover: 240 10% 6%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 263 70% 50%;
-    --primary-foreground: 0 0% 100%;
-    --primary-glow: 263 90% 65%;
+    /* Monochrome theme primary colors */
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 10% 3.9%;
+    --primary-glow: 0 0% 85%;
 
     --secondary: 240 10% 12%;
     --secondary-foreground: 0 0% 98%;
@@ -27,8 +28,8 @@ All colors MUST be HSL.
     --muted: 240 10% 15%;
     --muted-foreground: 240 5% 65%;
 
-    --accent: 316 70% 50%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 0 0% 90%;
+    --accent-foreground: 240 10% 3.9%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
@@ -39,12 +40,12 @@ All colors MUST be HSL.
 
     --radius: 0.75rem;
 
-    --gradient-primary: linear-gradient(135deg, hsl(263 70% 50%), hsl(316 70% 50%));
-    --gradient-secondary: linear-gradient(135deg, hsl(240 70% 60%), hsl(263 70% 50%));
-    --gradient-accent: linear-gradient(135deg, hsl(316 70% 50%), hsl(340 70% 50%));
+    --gradient-primary: linear-gradient(135deg, hsl(0 0% 98%), hsl(0 0% 90%));
+    --gradient-secondary: linear-gradient(135deg, hsl(0 0% 80%), hsl(0 0% 95%));
+    --gradient-accent: linear-gradient(135deg, hsl(0 0% 90%), hsl(0 0% 85%));
     
-    --glow-primary: 0 0 40px hsl(263 90% 65% / 0.4);
-    --glow-accent: 0 0 40px hsl(316 90% 65% / 0.4);
+    --glow-primary: 0 0 40px hsl(0 0% 95% / 0.25);
+    --glow-accent: 0 0 40px hsl(0 0% 90% / 0.25);
     
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
