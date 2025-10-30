@@ -10,12 +10,14 @@ const Admin = () => {
   const [busy, setBusy] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
+  const [items, setItems] = useState<Array<{ user_id: string; daily_limit: number; today_count: number }>>([]);
 
   useEffect(() => {
     let mounted = true;
     const init = async () => {
       const { data } = await supabase.auth.getSession();
       if (mounted) setUserEmail(data.session?.user?.email ?? null);
+      await refreshList();
     };
     init();
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -26,6 +28,16 @@ const Admin = () => {
       sub.subscription?.unsubscribe();
     };
   }, []);
+
+  const refreshList = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("list-user-limits");
+      if (error) throw error;
+      if (data?.items) setItems(data.items);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const applyLimit = async () => {
     if (!userId.trim()) {
@@ -83,6 +95,26 @@ const Admin = () => {
         <Button onClick={applyLimit} disabled={busy} className="w-full">
           {busy ? "Saving..." : "Save Limit"}
         </Button>
+        <div className="pt-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-medium">Current Limits</h3>
+            <Button variant="outline" size="sm" onClick={refreshList}>Refresh</Button>
+          </div>
+          <div className="mt-2 space-y-2">
+            {items.map((it) => (
+              <div key={it.user_id} className="flex items-center justify-between border rounded-md p-2">
+                <div>
+                  <div className="text-sm font-mono">{it.user_id}</div>
+                  <div className="text-xs text-muted-foreground">Today: {it.today_count} / {it.daily_limit}</div>
+                </div>
+                <div className="text-sm">Limit: {it.daily_limit}</div>
+              </div>
+            ))}
+            {items.length === 0 && (
+              <div className="text-sm text-muted-foreground">No limits set yet.</div>
+            )}
+          </div>
+        </div>
         <p className="text-xs text-muted-foreground">Note: This page is hidden and only accessible via direct URL.</p>
       </div>
     </div>

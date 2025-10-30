@@ -11,6 +11,7 @@ const Index = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
+  const [usage, setUsage] = useState<{ count: number; limit: number; remaining: number } | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
@@ -18,6 +19,14 @@ const Index = () => {
     const init = async () => {
       const { data } = await supabase.auth.getSession();
       if (mounted) setUserEmail(data.session?.user?.email ?? null);
+      if (data.session?.user) {
+        try {
+          const { data: u } = await supabase.functions.invoke("usage-status");
+          if (u && typeof u.count === "number") setUsage({ count: u.count, limit: u.limit, remaining: u.remaining });
+        } catch (e) {
+          console.error("usage-status error", e);
+        }
+      }
     };
     init();
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -58,6 +67,15 @@ const Index = () => {
       toast.error("Please login with Google first");
       return;
     }
+    if (usage) {
+      if (usage.remaining <= 0) {
+        toast.error("Daily limit reached. Try again tomorrow.");
+        return;
+      }
+      if (usage.remaining <= 5) {
+        toast.warning(`Approaching limit: ${usage.remaining} left today`);
+      }
+    }
     if (!prompt.trim()) {
       toast.error("Please enter a prompt");
       return;
@@ -78,6 +96,11 @@ const Index = () => {
 
       setGeneratedImage(data.imageUrl);
       toast.success("Image generated successfully!");
+      // Refresh usage after success
+      try {
+        const { data: u } = await supabase.functions.invoke("usage-status");
+        if (u && typeof u.count === "number") setUsage({ count: u.count, limit: u.limit, remaining: u.remaining });
+      } catch {}
     } catch (error) {
       console.error("Error generating image:", error);
       toast.error("Failed to generate image. Please try again.");
@@ -151,6 +174,9 @@ const Index = () => {
         {userEmail ? (
           <>
             <span className="text-sm text-muted-foreground">Logged in as {userEmail}</span>
+            {usage && (
+              <span className="text-xs px-2 py-1 border rounded-md bg-card">Today: {usage.count} / {usage.limit} ({usage.remaining} left)</span>
+            )}
             {ADMIN_EMAIL && userEmail.toLowerCase() === String(ADMIN_EMAIL).toLowerCase() && (
               <Link to="/admin-quiet-6b27c9" className="inline-flex">
                 <Button variant="outline" size="sm">
