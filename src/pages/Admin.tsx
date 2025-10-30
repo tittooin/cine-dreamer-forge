@@ -34,7 +34,9 @@ const Admin = () => {
 
   const refreshList = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke("list-user-limits");
+      const { data, error } = await supabase.functions.invoke("list-user-limits", {
+        body: { page, pageSize, q: query }
+      });
       if (error) throw error;
       if (data?.items) setItems(data.items);
     } catch (e) {
@@ -123,7 +125,45 @@ const Admin = () => {
                   <div className="text-xs text-muted-foreground">{it.email ?? "(no email)"}</div>
                   <div className="text-xs text-muted-foreground">Today: {it.today_count} / {it.daily_limit}</div>
                 </div>
-                <div className="text-sm">Limit: {it.daily_limit}</div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      const newLimit = Math.max(1, (it.daily_limit ?? 1) - 1);
+                      const { data, error } = await supabase.functions.invoke("set-user-limit", {
+                        body: { userId: it.user_id, dailyLimit: newLimit },
+                      });
+                      if (error || data?.error) {
+                        toast.error("Failed to update limit");
+                      } else {
+                        toast.success("Limit decreased");
+                        await refreshList();
+                      }
+                    }}
+                  >
+                    -
+                  </Button>
+                  <div className="text-sm">Limit: {it.daily_limit}</div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      const newLimit = (it.daily_limit ?? 0) + 1;
+                      const { data, error } = await supabase.functions.invoke("set-user-limit", {
+                        body: { userId: it.user_id, dailyLimit: newLimit },
+                      });
+                      if (error || data?.error) {
+                        toast.error("Failed to update limit");
+                      } else {
+                        toast.success("Limit increased");
+                        await refreshList();
+                      }
+                    }}
+                  >
+                    +
+                  </Button>
+                </div>
               </div>
             ))}
             {items.length === 0 && (

@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Download, Sparkles, Shield } from "lucide-react";
+import { Loader2, Download, Sparkles, Shield, Info } from "lucide-react";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Link } from "react-router-dom";
 
 const Index = () => {
@@ -178,7 +179,18 @@ const Index = () => {
               const pct = usage.limit > 0 ? (usage.remaining / usage.limit) : 0;
               const color = usage.remaining <= 5 ? "bg-red-500/15 text-red-600 border-red-500/30" : pct <= 0.2 ? "bg-orange-500/15 text-orange-600 border-orange-500/30" : "bg-green-500/15 text-green-700 border-green-500/30";
               return (
-                <span className={`text-xs px-2 py-1 border rounded-md ${color}`}>Today: {usage.count} / {usage.limit} ({usage.remaining} left)</span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className={`text-xs px-2 py-1 border rounded-md cursor-help ${color}`}>Today: {usage.count} / {usage.limit} ({usage.remaining} left)</span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <div className="text-xs space-y-1">
+                      <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-600" /> Green: healthy remaining</div>
+                      <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-500" /> Orange: ≤20% remaining</div>
+                      <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-600" /> Red: ≤5 left today</div>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
               );
             })()}
             {ADMIN_EMAIL && userEmail.toLowerCase() === String(ADMIN_EMAIL).toLowerCase() && (
