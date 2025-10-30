@@ -29,6 +29,18 @@ const Index = () => {
   const [bgColor, setBgColor] = useState<string>("#000000");
   const [bgOpacity, setBgOpacity] = useState<number>(0.35);
   const [align, setAlign] = useState<"left" | "center">("left");
+  const [headingWeight, setHeadingWeight] = useState<string>("700");
+  const [bulletWeight, setBulletWeight] = useState<string>("400");
+  const [ctaWeight, setCtaWeight] = useState<string>("600");
+  const [shadowEnabled, setShadowEnabled] = useState<boolean>(false);
+  const [shadowColor, setShadowColor] = useState<string>("#000000");
+  const [shadowBlur, setShadowBlur] = useState<number>(0.01);
+  const [headingBgEnabled, setHeadingBgEnabled] = useState<boolean>(true);
+  const [headingBgColor, setHeadingBgColor] = useState<string>("#000000");
+  const [headingBgOpacity, setHeadingBgOpacity] = useState<number>(0.35);
+  const [bulletsBgEnabled, setBulletsBgEnabled] = useState<boolean>(true);
+  const [bulletsBgColor, setBulletsBgColor] = useState<string>("#000000");
+  const [bulletsBgOpacity, setBulletsBgOpacity] = useState<number>(0.35);
 
   useEffect(() => {
     let mounted = true;
