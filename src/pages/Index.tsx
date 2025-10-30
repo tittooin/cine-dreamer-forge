@@ -21,6 +21,14 @@ const Index = () => {
   const [posterHeading, setPosterHeading] = useState("");
   const [posterBullets, setPosterBullets] = useState(""); // newline separated
   const [posterCta, setPosterCta] = useState("");
+  // Style controls
+  const [textColor, setTextColor] = useState<string>("#ffffff");
+  const [strokeColor, setStrokeColor] = useState<string>("#000000");
+  const [strokeStrength, setStrokeStrength] = useState<number>(0.003); // relative factor to canvas width
+  const [bgEnabled, setBgEnabled] = useState<boolean>(true);
+  const [bgColor, setBgColor] = useState<string>("#000000");
+  const [bgOpacity, setBgOpacity] = useState<number>(0.35);
+  const [align, setAlign] = useState<"left" | "center">("left");
 
   useEffect(() => {
     let mounted = true;
@@ -120,23 +128,48 @@ const Index = () => {
   const watermarkSrc = `${import.meta.env.BASE_URL}logo.png`;
 
   // Helpers for poster overlay
-  function wrapText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number) {
+  function computeLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number) {
     const words = text.split(" ");
+    const lines: string[] = [];
     let line = "";
     for (let n = 0; n < words.length; n++) {
       const testLine = line + words[n] + " ";
       const metrics = ctx.measureText(testLine);
       if (metrics.width > maxWidth && n > 0) {
-        ctx.fillText(line, x, y);
-        ctx.strokeText(line, x, y);
+        lines.push(line);
         line = words[n] + " ";
-        y += lineHeight;
       } else {
         line = testLine;
       }
     }
-    ctx.fillText(line, x, y);
-    ctx.strokeText(line, x, y);
+    lines.push(line);
+    return lines;
+  }
+
+  function drawLines(ctx: CanvasRenderingContext2D, lines: string[], x: number, y: number, lineHeight: number) {
+    for (let i = 0; i < lines.length; i++) {
+      ctx.fillText(lines[i], x, y + i * lineHeight);
+      ctx.strokeText(lines[i], x, y + i * lineHeight);
+    }
+  }
+
+  function hexWithOpacity(hex: string, opacity: number) {
+    // hex like #000000; return rgba string
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+  }
+
+  function drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+    ctx.fill();
   }
 
   async function loadPosterFonts(lang: "en" | "hi" | "mr") {
@@ -155,29 +188,58 @@ const Index = () => {
     const devFont = await loadPosterFonts(lang);
     const margin = Math.floor(canvas.width * 0.06);
     const maxWidth = canvas.width - margin * 2;
+    const lineW = Math.max(4, Math.floor(canvas.width * strokeStrength));
+    ctx.fillStyle = textColor;
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = lineW;
+    ctx.textBaseline = "top";
+    ctx.textAlign = align === "center" ? "center" : "left";
+    const xText = align === "center" ? canvas.width / 2 : margin;
 
     // Heading
-    ctx.font = `700 ${Math.floor(canvas.width * 0.06)}px ${devFont}`;
-    ctx.fillStyle = "white";
-    ctx.strokeStyle = "rgba(0,0,0,0.65)";
-    ctx.lineWidth = Math.max(4, Math.floor(canvas.width * 0.003));
-    ctx.textBaseline = "top";
-    wrapText(ctx, heading, margin, margin, maxWidth, Math.floor(canvas.width * 0.065));
+    const headingSize = Math.floor(canvas.width * 0.06);
+    ctx.font = `700 ${headingSize}px ${devFont}`;
+    const headingLines = computeLines(ctx, heading, maxWidth);
 
     // Bullets
-    ctx.font = `400 ${Math.floor(canvas.width * 0.03)}px ${devFont}`;
-    let y = margin + Math.floor(canvas.width * 0.12);
+    const bulletSize = Math.floor(canvas.width * 0.03);
     const lineHeight = Math.floor(canvas.width * 0.035);
+    ctx.font = `400 ${bulletSize}px ${devFont}`;
+    let yStart = margin + headingSize; // approximate start for bullets block
+    const bulletLines: string[] = [];
     bullets.forEach((b) => {
-      wrapText(ctx, `• ${b}`, margin, y, maxWidth, lineHeight);
-      y += Math.floor(canvas.width * 0.04);
+      const lines = computeLines(ctx, `• ${b}`, maxWidth);
+      lines.forEach((ln) => bulletLines.push(ln));
     });
 
+    const totalHeight = headingLines.length * Math.floor(canvas.width * 0.065) + bulletLines.length * lineHeight + Math.floor(canvas.width * 0.05);
+
+    // Background band
+    if (bgEnabled) {
+      ctx.save();
+      ctx.fillStyle = hexWithOpacity(bgColor, bgOpacity);
+      const bandX = align === "center" ? (canvas.width - maxWidth) / 2 : margin;
+      const bandY = margin - Math.floor(canvas.width * 0.02);
+      const bandW = maxWidth;
+      const bandH = totalHeight;
+      drawRoundedRect(ctx, bandX, bandY, bandW, bandH, Math.floor(canvas.width * 0.02));
+      ctx.restore();
+    }
+
+    // Draw heading lines
+    ctx.font = `700 ${headingSize}px ${devFont}`;
+    drawLines(ctx, headingLines, xText, margin, Math.floor(canvas.width * 0.065));
+
+    // Draw bullets
+    ctx.font = `400 ${bulletSize}px ${devFont}`;
+    drawLines(ctx, bulletLines, xText, yStart, lineHeight);
+
+    // Bullets
     // CTA bottom center
     if (cta.trim()) {
       ctx.font = `600 ${Math.floor(canvas.width * 0.032)}px ${devFont}`;
       const ctaWidth = ctx.measureText(cta).width;
-      const ctaX = (canvas.width - ctaWidth) / 2;
+      const ctaX = align === "center" ? (canvas.width - ctaWidth) / 2 : margin;
       const ctaY = canvas.height - margin;
       ctx.fillText(cta, ctaX, ctaY);
       ctx.strokeText(cta, ctaX, ctaY);
@@ -378,6 +440,42 @@ const Index = () => {
             <div>
               <label className="text-sm">CTA (optional)</label>
               <Input placeholder={posterLang === 'hi' ? 'अभी शुरू करें...' : posterLang === 'mr' ? 'आता सुरू करा...' : 'Try it now...'} value={posterCta} onChange={(e) => setPosterCta(e.target.value)} />
+            </div>
+          </div>
+          {/* Style controls */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div>
+              <label className="text-sm">Text Color</label>
+              <input type="color" className="w-full h-10" value={textColor} onChange={(e) => setTextColor(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm">Stroke Color</label>
+              <input type="color" className="w-full h-10" value={strokeColor} onChange={(e) => setStrokeColor(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm">Stroke Strength</label>
+              <input type="range" min={0.001} max={0.01} step={0.001} className="w-full" value={strokeStrength} onChange={(e) => setStrokeStrength(Number(e.target.value))} />
+            </div>
+            <div>
+              <label className="text-sm">Align</label>
+              <select className="w-full h-10 bg-input border border-border rounded-md px-2" value={align} onChange={(e) => setAlign(e.target.value as any)}>
+                <option value="left">Left</option>
+                <option value="center">Center</option>
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="flex items-center gap-2">
+              <input id="bgEnabled" type="checkbox" className="h-4 w-4" checked={bgEnabled} onChange={(e) => setBgEnabled(e.target.checked)} />
+              <label htmlFor="bgEnabled" className="text-sm">Text background band</label>
+            </div>
+            <div>
+              <label className="text-sm">BG Color</label>
+              <input type="color" className="w-full h-10" value={bgColor} onChange={(e) => setBgColor(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm">BG Opacity</label>
+              <input type="range" min={0} max={0.8} step={0.05} className="w-full" value={bgOpacity} onChange={(e) => setBgOpacity(Number(e.target.value))} />
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
