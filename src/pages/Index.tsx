@@ -15,32 +15,7 @@ const Index = () => {
   const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
   const [usage, setUsage] = useState<{ count: number; limit: number; remaining: number } | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  // Poster mode state
-  const [posterMode, setPosterMode] = useState(false);
-  const [posterLang, setPosterLang] = useState<"en" | "hi" | "mr">("en");
-  const [posterHeading, setPosterHeading] = useState("");
-  const [posterBullets, setPosterBullets] = useState(""); // newline separated
-  const [posterCta, setPosterCta] = useState("");
-  // Style controls
-  const [textColor, setTextColor] = useState<string>("#ffffff");
-  const [strokeColor, setStrokeColor] = useState<string>("#000000");
-  const [strokeStrength, setStrokeStrength] = useState<number>(0.003); // relative factor to canvas width
-  const [bgEnabled, setBgEnabled] = useState<boolean>(true);
-  const [bgColor, setBgColor] = useState<string>("#000000");
-  const [bgOpacity, setBgOpacity] = useState<number>(0.35);
-  const [align, setAlign] = useState<"left" | "center">("left");
-  const [headingWeight, setHeadingWeight] = useState<string>("700");
-  const [bulletWeight, setBulletWeight] = useState<string>("400");
-  const [ctaWeight, setCtaWeight] = useState<string>("600");
-  const [shadowEnabled, setShadowEnabled] = useState<boolean>(false);
-  const [shadowColor, setShadowColor] = useState<string>("#000000");
-  const [shadowBlur, setShadowBlur] = useState<number>(0.01);
-  const [headingBgEnabled, setHeadingBgEnabled] = useState<boolean>(true);
-  const [headingBgColor, setHeadingBgColor] = useState<string>("#000000");
-  const [headingBgOpacity, setHeadingBgOpacity] = useState<number>(0.35);
-  const [bulletsBgEnabled, setBulletsBgEnabled] = useState<boolean>(true);
-  const [bulletsBgColor, setBulletsBgColor] = useState<string>("#000000");
-  const [bulletsBgOpacity, setBulletsBgOpacity] = useState<number>(0.35);
+  // Poster editing moved to dedicated page (/poster)
 
   useEffect(() => {
     let mounted = true;
@@ -139,133 +114,6 @@ const Index = () => {
 
   const watermarkSrc = `${import.meta.env.BASE_URL}logo.png`;
 
-  // Helpers for poster overlay
-  function computeLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number) {
-    const words = text.split(" ");
-    const lines: string[] = [];
-    let line = "";
-    for (let n = 0; n < words.length; n++) {
-      const testLine = line + words[n] + " ";
-      const metrics = ctx.measureText(testLine);
-      if (metrics.width > maxWidth && n > 0) {
-        lines.push(line);
-        line = words[n] + " ";
-      } else {
-        line = testLine;
-      }
-    }
-    lines.push(line);
-    return lines;
-  }
-
-  function drawLines(ctx: CanvasRenderingContext2D, lines: string[], x: number, y: number, lineHeight: number) {
-    for (let i = 0; i < lines.length; i++) {
-      ctx.fillText(lines[i], x, y + i * lineHeight);
-      ctx.strokeText(lines[i], x, y + i * lineHeight);
-    }
-  }
-
-  function hexWithOpacity(hex: string, opacity: number) {
-    // hex like #000000; return rgba string
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
-  }
-
-  function drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
-    ctx.fill();
-  }
-
-  async function loadPosterFonts(lang: "en" | "hi" | "mr") {
-    const devFont = lang === "en" ? '"Inter"' : '"Noto Sans Devanagari"';
-    await Promise.all([
-      document.fonts.load(`700 64px ${devFont}`),
-      document.fonts.load(`600 30px ${devFont}`),
-      document.fonts.load(`400 28px ${devFont}`),
-    ]);
-    return devFont;
-  }
-
-  async function overlayPosterText(canvas: HTMLCanvasElement, heading: string, bullets: string[], cta: string, lang: "en" | "hi" | "mr") {
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    const devFont = await loadPosterFonts(lang);
-    const margin = Math.floor(canvas.width * 0.06);
-    const maxWidth = canvas.width - margin * 2;
-    const lineW = Math.max(4, Math.floor(canvas.width * strokeStrength));
-    ctx.fillStyle = textColor;
-    ctx.strokeStyle = strokeColor;
-    ctx.lineWidth = lineW;
-    ctx.textBaseline = "top";
-    ctx.textAlign = align === "center" ? "center" : "left";
-    const xText = align === "center" ? canvas.width / 2 : margin;
-
-    // Heading
-    const headingSize = Math.floor(canvas.width * 0.06);
-    const headingLineH = Math.floor(canvas.width * 0.065);
-    ctx.font = `${headingWeight} ${headingSize}px ${devFont}`;
-    const headingLines = computeLines(ctx, heading, maxWidth);
-    const headingHeight = headingLines.length * headingLineH;
-
-    // Bullets
-    const bulletSize = Math.floor(canvas.width * 0.03);
-    const bulletLineH = Math.floor(canvas.width * 0.035);
-    ctx.font = `${bulletWeight} ${bulletSize}px ${devFont}`;
-    let yStart = margin + headingHeight;
-    const bulletLines: string[] = [];
-    bullets.forEach((b) => {
-      const lines = computeLines(ctx, `• ${b}`, maxWidth);
-      lines.forEach((ln) => bulletLines.push(ln));
-    });
-    const bulletsHeight = bulletLines.length * bulletLineH + Math.floor(canvas.width * 0.02);
-
-    // Separate background bands
-    if (bgEnabled && headingBgEnabled) {
-      ctx.save();
-      ctx.fillStyle = hexWithOpacity(headingBgColor, headingBgOpacity);
-      const bandX = align === "center" ? (canvas.width - maxWidth) / 2 : margin;
-      const bandY = margin - Math.floor(canvas.width * 0.02);
-      drawRoundedRect(ctx, bandX, bandY, maxWidth, headingHeight + Math.floor(canvas.width * 0.02), Math.floor(canvas.width * 0.02));
-      ctx.restore();
-    }
-    if (bgEnabled && bulletsBgEnabled) {
-      ctx.save();
-      ctx.fillStyle = hexWithOpacity(bulletsBgColor, bulletsBgOpacity);
-      const bandX = align === "center" ? (canvas.width - maxWidth) / 2 : margin;
-      const bandY = yStart - Math.floor(canvas.width * 0.01);
-      drawRoundedRect(ctx, bandX, bandY, maxWidth, bulletsHeight, Math.floor(canvas.width * 0.02));
-      ctx.restore();
-    }
-
-    // Draw heading
-    ctx.font = `${headingWeight} ${headingSize}px ${devFont}`;
-    if (shadowEnabled) { ctx.shadowColor = hexWithOpacity(shadowColor, 0.7); ctx.shadowBlur = Math.floor(canvas.width * shadowBlur); } else { ctx.shadowBlur = 0; }
-    drawLines(ctx, headingLines, xText, margin, headingLineH);
-
-    // Draw bullets
-    ctx.font = `${bulletWeight} ${bulletSize}px ${devFont}`;
-    if (shadowEnabled) { ctx.shadowColor = hexWithOpacity(shadowColor, 0.7); ctx.shadowBlur = Math.floor(canvas.width * shadowBlur); } else { ctx.shadowBlur = 0; }
-    drawLines(ctx, bulletLines, xText, yStart, bulletLineH);
-
-    // CTA bottom
-    if (cta.trim()) {
-      ctx.font = `${ctaWeight} ${Math.floor(canvas.width * 0.032)}px ${devFont}`;
-      const ctaWidth = ctx.measureText(cta).width;
-      const ctaX = align === "center" ? (canvas.width - ctaWidth) / 2 : margin;
-      const ctaY = canvas.height - margin;
-      if (shadowEnabled) { ctx.shadowColor = hexWithOpacity(shadowColor, 0.7); ctx.shadowBlur = Math.floor(canvas.width * shadowBlur); } else { ctx.shadowBlur = 0; }
-      ctx.fillText(cta, ctaX, ctaY);
-      ctx.strokeText(cta, ctaX, ctaY);
-    }
-  }
 
   const handleDownload = async () => {
     if (!generatedImage) return;
@@ -303,11 +151,7 @@ const Index = () => {
       ctx.globalAlpha = 0.6;
       ctx.drawImage(wmImg, x, y, wmWidth, wmHeight);
 
-      // Poster overlay if enabled
-      if (posterMode) {
-        const bullets = posterBullets.split(/\r?\n/).filter((l) => l.trim().length > 0);
-        await overlayPosterText(canvas, posterHeading || "", bullets, posterCta || "", posterLang);
-      }
+      // Poster editing now happens on /poster page only
 
       const dataUrl = canvas.toDataURL("image/png");
       const link = document.createElement("a");
@@ -335,52 +179,6 @@ const Index = () => {
       localStorage.setItem("lastGeneratedImage", generatedImage);
     } catch {}
     window.location.href = `${import.meta.env.BASE_URL}poster`;
-  };
-
-  const handleApplyPosterOverlay = async () => {
-    if (!generatedImage) {
-      toast.error("Generate an image first");
-      return;
-    }
-    try {
-      const baseImg = new Image();
-      baseImg.crossOrigin = "anonymous";
-      baseImg.src = generatedImage;
-      await new Promise<void>((resolve, reject) => {
-        baseImg.onload = () => resolve();
-        baseImg.onerror = () => reject(new Error("Failed to load base image"));
-      });
-      const canvas = document.createElement("canvas");
-      canvas.width = baseImg.naturalWidth;
-      canvas.height = baseImg.naturalHeight;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("Canvas not supported");
-      ctx.drawImage(baseImg, 0, 0);
-      const wmImg = new Image();
-      wmImg.crossOrigin = "anonymous";
-      wmImg.src = watermarkSrc;
-      await new Promise<void>((resolve, reject) => {
-        wmImg.onload = () => resolve();
-        wmImg.onerror = () => reject(new Error("Failed to load watermark"));
-      });
-      const margin = Math.floor(canvas.width * 0.02);
-      const wmWidth = Math.floor(canvas.width * 0.08);
-      const wmAspect = wmImg.naturalWidth / wmImg.naturalHeight;
-      const wmHeight = Math.floor(wmWidth / wmAspect);
-      const x = canvas.width - wmWidth - margin;
-      const y = margin;
-      ctx.globalAlpha = 0.6;
-      ctx.drawImage(wmImg, x, y, wmWidth, wmHeight);
-
-      const bullets = posterBullets.split(/\r?\n/).filter((l) => l.trim().length > 0);
-      await overlayPosterText(canvas, posterHeading || "", bullets, posterCta || "", posterLang);
-      const updated = canvas.toDataURL("image/png");
-      setGeneratedImage(updated);
-      toast.success("Poster overlay applied");
-    } catch (e) {
-      console.error(e);
-      toast.error("Failed to apply poster overlay");
-    }
   };
 
   return (
@@ -452,147 +250,9 @@ const Index = () => {
             className="min-h-[120px] text-lg resize-none bg-input border-border focus-visible:ring-primary"
             disabled={isGenerating}
           />
-          {/* Poster Mode Controls */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="flex items-center gap-2">
-              <input id="posterMode" type="checkbox" className="h-4 w-4" checked={posterMode} onChange={(e) => setPosterMode(e.target.checked)} />
-              <label htmlFor="posterMode" className="text-sm">Poster mode</label>
-            </div>
-            <div>
-              <label className="text-sm">Language</label>
-              <select className="w-full h-10 bg-input border border-border rounded-md px-2" value={posterLang} onChange={(e) => setPosterLang(e.target.value as any)}>
-                <option value="en">English</option>
-                <option value="hi">Hindi</option>
-                <option value="mr">Marathi</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-sm">CTA (optional)</label>
-              <Input placeholder={posterLang === 'hi' ? 'अभी शुरू करें...' : posterLang === 'mr' ? 'आता सुरू करा...' : 'Try it now...'} value={posterCta} onChange={(e) => setPosterCta(e.target.value)} />
-            </div>
-          </div>
-          {/* Style controls */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-            <div>
-              <label className="text-sm">Text Color</label>
-              <input type="color" className="w-full h-10" value={textColor} onChange={(e) => setTextColor(e.target.value)} />
-            </div>
-            <div>
-              <label className="text-sm">Stroke Color</label>
-              <input type="color" className="w-full h-10" value={strokeColor} onChange={(e) => setStrokeColor(e.target.value)} />
-            </div>
-            <div>
-              <label className="text-sm">Stroke Strength</label>
-              <input type="range" min={0.001} max={0.01} step={0.001} className="w-full" value={strokeStrength} onChange={(e) => setStrokeStrength(Number(e.target.value))} />
-            </div>
-            <div>
-              <label className="text-sm">Align</label>
-              <select className="w-full h-10 bg-input border border-border rounded-md px-2" value={align} onChange={(e) => setAlign(e.target.value as any)}>
-                <option value="left">Left</option>
-                <option value="center">Center</option>
-              </select>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="flex items-center gap-2">
-              <input id="bgEnabled" type="checkbox" className="h-4 w-4" checked={bgEnabled} onChange={(e) => setBgEnabled(e.target.checked)} />
-              <label htmlFor="bgEnabled" className="text-sm">Text background band</label>
-            </div>
-            <div>
-              <label className="text-sm">BG Color</label>
-              <input type="color" className="w-full h-10" value={bgColor} onChange={(e) => setBgColor(e.target.value)} />
-            </div>
-            <div>
-              <label className="text-sm">BG Opacity</label>
-              <input type="range" min={0} max={0.8} step={0.05} className="w-full" value={bgOpacity} onChange={(e) => setBgOpacity(Number(e.target.value))} />
-            </div>
-          </div>
-          {/* Advanced bands & font weights */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div>
-              <label className="text-sm">Heading Weight</label>
-              <select className="w-full h-10 bg-input border border-border rounded-md px-2" value={headingWeight} onChange={(e) => setHeadingWeight(e.target.value)}>
-                <option value="500">Medium</option>
-                <option value="600">Semibold</option>
-                <option value="700">Bold</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-sm">Bullet Weight</label>
-              <select className="w-full h-10 bg-input border border-border rounded-md px-2" value={bulletWeight} onChange={(e) => setBulletWeight(e.target.value)}>
-                <option value="400">Normal</option>
-                <option value="500">Medium</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-sm">CTA Weight</label>
-              <select className="w-full h-10 bg-input border border-border rounded-md px-2" value={ctaWeight} onChange={(e) => setCtaWeight(e.target.value)}>
-                <option value="500">Medium</option>
-                <option value="600">Semibold</option>
-                <option value="700">Bold</option>
-              </select>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="flex items-center gap-2">
-              <input id="headingBgEnabled" type="checkbox" className="h-4 w-4" checked={headingBgEnabled} onChange={(e) => setHeadingBgEnabled(e.target.checked)} />
-              <label htmlFor="headingBgEnabled" className="text-sm">Heading band</label>
-            </div>
-            <div className="flex items-center gap-2">
-              <input id="bulletsBgEnabled" type="checkbox" className="h-4 w-4" checked={bulletsBgEnabled} onChange={(e) => setBulletsBgEnabled(e.target.checked)} />
-              <label htmlFor="bulletsBgEnabled" className="text-sm">Bullets band</label>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-            <div>
-              <label className="text-sm">Heading Band Color</label>
-              <input type="color" className="w-full h-10" value={headingBgColor} onChange={(e) => setHeadingBgColor(e.target.value)} />
-            </div>
-            <div>
-              <label className="text-sm">Heading Band Opacity</label>
-              <input type="range" min={0} max={0.8} step={0.05} className="w-full" value={headingBgOpacity} onChange={(e) => setHeadingBgOpacity(Number(e.target.value))} />
-            </div>
-            <div>
-              <label className="text-sm">Bullets Band Color</label>
-              <input type="color" className="w-full h-10" value={bulletsBgColor} onChange={(e) => setBulletsBgColor(e.target.value)} />
-            </div>
-            <div>
-              <label className="text-sm">Bullets Band Opacity</label>
-              <input type="range" min={0} max={0.8} step={0.05} className="w-full" value={bulletsBgOpacity} onChange={(e) => setBulletsBgOpacity(Number(e.target.value))} />
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="flex items-center gap-2">
-              <input id="shadowEnabled" type="checkbox" className="h-4 w-4" checked={shadowEnabled} onChange={(e) => setShadowEnabled(e.target.checked)} />
-              <label htmlFor="shadowEnabled" className="text-sm">Text shadow</label>
-            </div>
-            <div>
-              <label className="text-sm">Shadow Color</label>
-              <input type="color" className="w-full h-10" value={shadowColor} onChange={(e) => setShadowColor(e.target.value)} />
-            </div>
-            <div>
-              <label className="text-sm">Shadow Blur</label>
-              <input type="range" min={0} max={0.03} step={0.002} className="w-full" value={shadowBlur} onChange={(e) => setShadowBlur(Number(e.target.value))} />
-            </div>
-          </div>
-          {/* Preset themes */}
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => { setTextColor('#ffffff'); setStrokeColor('#000000'); setStrokeStrength(0.004); setBgEnabled(true); setBgColor('#000000'); setBgOpacity(0.35); setHeadingBgEnabled(true); setBulletsBgEnabled(true); setShadowEnabled(true); setShadowColor('#000000'); setShadowBlur(0.01); }}>Dark</Button>
-            <Button variant="outline" size="sm" onClick={() => { setTextColor('#111111'); setStrokeColor('#ffffff'); setStrokeStrength(0.003); setBgEnabled(true); setBgColor('#ffffff'); setBgOpacity(0.4); setHeadingBgEnabled(true); setBulletsBgEnabled(true); setShadowEnabled(false); }}>Light</Button>
-            <Button variant="outline" size="sm" onClick={() => { setTextColor('#ffffff'); setStrokeColor('#ff00ff'); setStrokeStrength(0.004); setBgEnabled(true); setBgColor('#7c3aed'); setBgOpacity(0.35); setHeadingBgEnabled(true); setBulletsBgEnabled(true); setShadowEnabled(true); setShadowColor('#7c3aed'); setShadowBlur(0.012); }}>Vibrant</Button>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <label className="text-sm">Heading</label>
-              <Input placeholder={posterLang === 'hi' ? 'AI इमेज मैजिक...' : posterLang === 'mr' ? 'AI इमेज मॅजिक...' : 'AI Image Magic Awaits!'} value={posterHeading} onChange={(e) => setPosterHeading(e.target.value)} />
-            </div>
-            <div>
-              <label className="text-sm">Bullets (one per line)</label>
-              <Textarea placeholder={posterLang === 'hi' ? 'रीयल रिज़ल्ट्स\nLinkedIn के लिए शानदार\nमज़ेदार और अनरियल' : posterLang === 'mr' ? 'खरे परिणाम\nLinkedIn साठी छान\nमजेदार आणि वेडेवाकडे' : 'Real results\nGreat for LinkedIn\nFun & Unreal'} value={posterBullets} onChange={(e) => setPosterBullets(e.target.value)} className="min-h-[100px]" />
-            </div>
-          </div>
+          {/* Poster controls removed — use dedicated Poster Editor */}
           <div className="flex items-center gap-3">
-            <Button variant="outline" onClick={handleApplyPosterOverlay} disabled={!generatedImage || !posterMode}>Apply Poster Overlay</Button>
+            <Button variant="outline" onClick={navigateToPoster} disabled={!generatedImage}>Make Poster</Button>
           </div>
           <Button
             onClick={handleGenerate}
