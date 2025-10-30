@@ -28,7 +28,9 @@ const Index = () => {
   }, []);
 
   const handleSignInGoogle = async () => {
-    const redirectTo = window.location.origin;
+    // Ensure redirect returns to correct base path (e.g., GH Pages /cine-dreamer-forge/)
+    const basePath = import.meta.env.BASE_URL || "/";
+    const redirectTo = `${window.location.origin}${basePath}`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo },
