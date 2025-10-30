@@ -10,7 +10,10 @@ const Admin = () => {
   const [busy, setBusy] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
-  const [items, setItems] = useState<Array<{ user_id: string; daily_limit: number; today_count: number }>>([]);
+  const [items, setItems] = useState<Array<{ user_id: string; email?: string; daily_limit: number; today_count: number }>>([]);
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(0);
+  const pageSize = 10;
 
   useEffect(() => {
     let mounted = true;
@@ -100,11 +103,24 @@ const Admin = () => {
             <h3 className="text-lg font-medium">Current Limits</h3>
             <Button variant="outline" size="sm" onClick={refreshList}>Refresh</Button>
           </div>
+          <div className="mt-2 flex gap-2">
+            <Input placeholder="Search by email or user_id" value={query} onChange={(e) => { setQuery(e.target.value); setPage(0); }} />
+          </div>
           <div className="mt-2 space-y-2">
-            {items.map((it) => (
+            {items
+              .filter((it) => {
+                const q = query.trim().toLowerCase();
+                if (!q) return true;
+                return (
+                  it.user_id.toLowerCase().includes(q) || (it.email ? it.email.toLowerCase().includes(q) : false)
+                );
+              })
+              .slice(page * pageSize, page * pageSize + pageSize)
+              .map((it) => (
               <div key={it.user_id} className="flex items-center justify-between border rounded-md p-2">
                 <div>
                   <div className="text-sm font-mono">{it.user_id}</div>
+                  <div className="text-xs text-muted-foreground">{it.email ?? "(no email)"}</div>
                   <div className="text-xs text-muted-foreground">Today: {it.today_count} / {it.daily_limit}</div>
                 </div>
                 <div className="text-sm">Limit: {it.daily_limit}</div>
@@ -113,6 +129,53 @@ const Admin = () => {
             {items.length === 0 && (
               <div className="text-sm text-muted-foreground">No limits set yet.</div>
             )}
+          </div>
+          <div className="mt-2 flex items-center justify-between">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.max(p - 1, 0))}
+              disabled={page === 0}
+            >
+              Prev
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              Page {page + 1} of {Math.max(1, Math.ceil(items.filter((it) => {
+                const q = query.trim().toLowerCase();
+                if (!q) return true;
+                return (
+                  it.user_id.toLowerCase().includes(q) || (it.email ? it.email.toLowerCase().includes(q) : false)
+                );
+              }).length / pageSize))}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => {
+                const total = items.filter((it) => {
+                  const q = query.trim().toLowerCase();
+                  if (!q) return true;
+                  return (
+                    it.user_id.toLowerCase().includes(q) || (it.email ? it.email.toLowerCase().includes(q) : false)
+                  );
+                }).length;
+                const maxPage = Math.max(0, Math.ceil(total / pageSize) - 1);
+                return Math.min(p + 1, maxPage);
+              })}
+              disabled={(() => {
+                const total = items.filter((it) => {
+                  const q = query.trim().toLowerCase();
+                  if (!q) return true;
+                  return (
+                    it.user_id.toLowerCase().includes(q) || (it.email ? it.email.toLowerCase().includes(q) : false)
+                  );
+                }).length;
+                const maxPage = Math.max(0, Math.ceil(total / pageSize) - 1);
+                return page >= maxPage;
+              })()}
+            >
+              Next
+            </Button>
           </div>
         </div>
         <p className="text-xs text-muted-foreground">Note: This page is hidden and only accessible via direct URL.</p>

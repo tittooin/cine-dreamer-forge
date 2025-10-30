@@ -62,7 +62,7 @@ serve(async (req) => {
       });
     }
 
-    const result = [] as Array<{ user_id: string; daily_limit: number; today_count: number }>;
+    const result = [] as Array<{ user_id: string; email?: string; daily_limit: number; today_count: number }>;
     for (const row of limits ?? []) {
       const { data: usageRow } = await adminClient
         .from("image_usage")
@@ -71,7 +71,12 @@ serve(async (req) => {
         .eq("period_start", periodStart)
         .maybeSingle();
       const today_count = usageRow && typeof usageRow.count === "number" ? (usageRow.count as number) : 0;
-      result.push({ user_id: row.user_id, daily_limit: row.daily_limit, today_count });
+      let email: string | undefined = undefined;
+      try {
+        const { data: userById } = await adminClient.auth.admin.getUserById(row.user_id);
+        email = userById?.user?.email ?? undefined;
+      } catch (_) {}
+      result.push({ user_id: row.user_id, email, daily_limit: row.daily_limit, today_count });
     }
 
     return new Response(JSON.stringify({ items: result }), {

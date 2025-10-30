@@ -174,9 +174,13 @@ const Index = () => {
         {userEmail ? (
           <>
             <span className="text-sm text-muted-foreground">Logged in as {userEmail}</span>
-            {usage && (
-              <span className="text-xs px-2 py-1 border rounded-md bg-card">Today: {usage.count} / {usage.limit} ({usage.remaining} left)</span>
-            )}
+            {usage && (() => {
+              const pct = usage.limit > 0 ? (usage.remaining / usage.limit) : 0;
+              const color = usage.remaining <= 5 ? "bg-red-500/15 text-red-600 border-red-500/30" : pct <= 0.2 ? "bg-orange-500/15 text-orange-600 border-orange-500/30" : "bg-green-500/15 text-green-700 border-green-500/30";
+              return (
+                <span className={`text-xs px-2 py-1 border rounded-md ${color}`}>Today: {usage.count} / {usage.limit} ({usage.remaining} left)</span>
+              );
+            })()}
             {ADMIN_EMAIL && userEmail.toLowerCase() === String(ADMIN_EMAIL).toLowerCase() && (
               <Link to="/admin-quiet-6b27c9" className="inline-flex">
                 <Button variant="outline" size="sm">
