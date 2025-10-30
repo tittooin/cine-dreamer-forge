@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,6 +15,12 @@ const Index = () => {
   const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
   const [usage, setUsage] = useState<{ count: number; limit: number; remaining: number } | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  // Poster mode state
+  const [posterMode, setPosterMode] = useState(false);
+  const [posterLang, setPosterLang] = useState<"en" | "hi" | "mr">("en");
+  const [posterHeading, setPosterHeading] = useState("");
+  const [posterBullets, setPosterBullets] = useState(""); // newline separated
+  const [posterCta, setPosterCta] = useState("");
 
   useEffect(() => {
     let mounted = true;
@@ -112,6 +119,71 @@ const Index = () => {
 
   const watermarkSrc = `${import.meta.env.BASE_URL}logo.png`;
 
+  // Helpers for poster overlay
+  function wrapText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number) {
+    const words = text.split(" ");
+    let line = "";
+    for (let n = 0; n < words.length; n++) {
+      const testLine = line + words[n] + " ";
+      const metrics = ctx.measureText(testLine);
+      if (metrics.width > maxWidth && n > 0) {
+        ctx.fillText(line, x, y);
+        ctx.strokeText(line, x, y);
+        line = words[n] + " ";
+        y += lineHeight;
+      } else {
+        line = testLine;
+      }
+    }
+    ctx.fillText(line, x, y);
+    ctx.strokeText(line, x, y);
+  }
+
+  async function loadPosterFonts(lang: "en" | "hi" | "mr") {
+    const devFont = lang === "en" ? '"Inter"' : '"Noto Sans Devanagari"';
+    await Promise.all([
+      document.fonts.load(`700 64px ${devFont}`),
+      document.fonts.load(`600 30px ${devFont}`),
+      document.fonts.load(`400 28px ${devFont}`),
+    ]);
+    return devFont;
+  }
+
+  async function overlayPosterText(canvas: HTMLCanvasElement, heading: string, bullets: string[], cta: string, lang: "en" | "hi" | "mr") {
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const devFont = await loadPosterFonts(lang);
+    const margin = Math.floor(canvas.width * 0.06);
+    const maxWidth = canvas.width - margin * 2;
+
+    // Heading
+    ctx.font = `700 ${Math.floor(canvas.width * 0.06)}px ${devFont}`;
+    ctx.fillStyle = "white";
+    ctx.strokeStyle = "rgba(0,0,0,0.65)";
+    ctx.lineWidth = Math.max(4, Math.floor(canvas.width * 0.003));
+    ctx.textBaseline = "top";
+    wrapText(ctx, heading, margin, margin, maxWidth, Math.floor(canvas.width * 0.065));
+
+    // Bullets
+    ctx.font = `400 ${Math.floor(canvas.width * 0.03)}px ${devFont}`;
+    let y = margin + Math.floor(canvas.width * 0.12);
+    const lineHeight = Math.floor(canvas.width * 0.035);
+    bullets.forEach((b) => {
+      wrapText(ctx, `• ${b}`, margin, y, maxWidth, lineHeight);
+      y += Math.floor(canvas.width * 0.04);
+    });
+
+    // CTA bottom center
+    if (cta.trim()) {
+      ctx.font = `600 ${Math.floor(canvas.width * 0.032)}px ${devFont}`;
+      const ctaWidth = ctx.measureText(cta).width;
+      const ctaX = (canvas.width - ctaWidth) / 2;
+      const ctaY = canvas.height - margin;
+      ctx.fillText(cta, ctaX, ctaY);
+      ctx.strokeText(cta, ctaX, ctaY);
+    }
+  }
+
   const handleDownload = async () => {
     if (!generatedImage) return;
 
@@ -148,6 +220,12 @@ const Index = () => {
       ctx.globalAlpha = 0.6;
       ctx.drawImage(wmImg, x, y, wmWidth, wmHeight);
 
+      // Poster overlay if enabled
+      if (posterMode) {
+        const bullets = posterBullets.split(/\r?\n/).filter((l) => l.trim().length > 0);
+        await overlayPosterText(canvas, posterHeading || "", bullets, posterCta || "", posterLang);
+      }
+
       const dataUrl = canvas.toDataURL("image/png");
       const link = document.createElement("a");
       link.href = dataUrl;
@@ -165,6 +243,52 @@ const Index = () => {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+    }
+  };
+
+  const handleApplyPosterOverlay = async () => {
+    if (!generatedImage) {
+      toast.error("Generate an image first");
+      return;
+    }
+    try {
+      const baseImg = new Image();
+      baseImg.crossOrigin = "anonymous";
+      baseImg.src = generatedImage;
+      await new Promise<void>((resolve, reject) => {
+        baseImg.onload = () => resolve();
+        baseImg.onerror = () => reject(new Error("Failed to load base image"));
+      });
+      const canvas = document.createElement("canvas");
+      canvas.width = baseImg.naturalWidth;
+      canvas.height = baseImg.naturalHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Canvas not supported");
+      ctx.drawImage(baseImg, 0, 0);
+      const wmImg = new Image();
+      wmImg.crossOrigin = "anonymous";
+      wmImg.src = watermarkSrc;
+      await new Promise<void>((resolve, reject) => {
+        wmImg.onload = () => resolve();
+        wmImg.onerror = () => reject(new Error("Failed to load watermark"));
+      });
+      const margin = Math.floor(canvas.width * 0.02);
+      const wmWidth = Math.floor(canvas.width * 0.08);
+      const wmAspect = wmImg.naturalWidth / wmImg.naturalHeight;
+      const wmHeight = Math.floor(wmWidth / wmAspect);
+      const x = canvas.width - wmWidth - margin;
+      const y = margin;
+      ctx.globalAlpha = 0.6;
+      ctx.drawImage(wmImg, x, y, wmWidth, wmHeight);
+
+      const bullets = posterBullets.split(/\r?\n/).filter((l) => l.trim().length > 0);
+      await overlayPosterText(canvas, posterHeading || "", bullets, posterCta || "", posterLang);
+      const updated = canvas.toDataURL("image/png");
+      setGeneratedImage(updated);
+      toast.success("Poster overlay applied");
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to apply poster overlay");
     }
   };
 
@@ -237,6 +361,38 @@ const Index = () => {
             className="min-h-[120px] text-lg resize-none bg-input border-border focus-visible:ring-primary"
             disabled={isGenerating}
           />
+          {/* Poster Mode Controls */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="flex items-center gap-2">
+              <input id="posterMode" type="checkbox" className="h-4 w-4" checked={posterMode} onChange={(e) => setPosterMode(e.target.checked)} />
+              <label htmlFor="posterMode" className="text-sm">Poster mode</label>
+            </div>
+            <div>
+              <label className="text-sm">Language</label>
+              <select className="w-full h-10 bg-input border border-border rounded-md px-2" value={posterLang} onChange={(e) => setPosterLang(e.target.value as any)}>
+                <option value="en">English</option>
+                <option value="hi">Hindi</option>
+                <option value="mr">Marathi</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-sm">CTA (optional)</label>
+              <Input placeholder={posterLang === 'hi' ? 'अभी शुरू करें...' : posterLang === 'mr' ? 'आता सुरू करा...' : 'Try it now...'} value={posterCta} onChange={(e) => setPosterCta(e.target.value)} />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm">Heading</label>
+              <Input placeholder={posterLang === 'hi' ? 'AI इमेज मैजिक...' : posterLang === 'mr' ? 'AI इमेज मॅजिक...' : 'AI Image Magic Awaits!'} value={posterHeading} onChange={(e) => setPosterHeading(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm">Bullets (one per line)</label>
+              <Textarea placeholder={posterLang === 'hi' ? 'रीयल रिज़ल्ट्स\nLinkedIn के लिए शानदार\nमज़ेदार और अनरियल' : posterLang === 'mr' ? 'खरे परिणाम\nLinkedIn साठी छान\nमजेदार आणि वेडेवाकडे' : 'Real results\nGreat for LinkedIn\nFun & Unreal'} value={posterBullets} onChange={(e) => setPosterBullets(e.target.value)} className="min-h-[100px]" />
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button variant="outline" onClick={handleApplyPosterOverlay} disabled={!generatedImage || !posterMode}>Apply Poster Overlay</Button>
+          </div>
           <Button
             onClick={handleGenerate}
             disabled={isGenerating || !prompt.trim() || !userEmail}
