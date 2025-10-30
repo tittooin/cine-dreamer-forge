@@ -329,6 +329,14 @@ const Index = () => {
     }
   };
 
+  const navigateToPoster = () => {
+    if (!generatedImage) { toast.error("Generate an image first"); return; }
+    try {
+      localStorage.setItem("lastGeneratedImage", generatedImage);
+    } catch {}
+    window.location.href = `${import.meta.env.BASE_URL}poster`;
+  };
+
   const handleApplyPosterOverlay = async () => {
     if (!generatedImage) {
       toast.error("Generate an image first");
@@ -629,6 +637,7 @@ const Index = () => {
                   <Download className="mr-2 h-4 w-4" />
                   Download Image
                 </Button>
+                <Button onClick={navigateToPoster} variant="outline" className="ml-3 shadow-lg">Make Poster</Button>
               </div>
             </div>
           </div>
