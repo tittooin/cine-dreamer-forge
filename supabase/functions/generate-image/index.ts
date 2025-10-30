@@ -39,7 +39,7 @@ serve(async (req) => {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const DAILY_LIMIT = Number(Deno.env.get("DAILY_IMAGE_LIMIT") || 50);
+    const DEFAULT_DAILY_LIMIT = Number(Deno.env.get("DAILY_IMAGE_LIMIT") || 50);
 
     // Require logged-in user: validate JWT from Authorization header via Supabase
     let userId: string | null = null;
@@ -79,6 +79,27 @@ serve(async (req) => {
       .slice(0, 10);
 
     // If Supabase admin creds exist, check usage; otherwise skip gracefully.
+    // Determine effective daily limit: per-user override if present
+    let effectiveDailyLimit = DEFAULT_DAILY_LIMIT;
+    if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY && userId) {
+      try {
+        const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+          auth: { persistSession: false },
+        });
+        const { data: limitRow, error: limitErr } = await supabase
+          .from("user_limits")
+          .select("daily_limit")
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (!limitErr && limitRow && typeof limitRow.daily_limit === "number") {
+          effectiveDailyLimit = limitRow.daily_limit as number;
+        }
+      } catch (e) {
+        console.warn("User limit fetch skipped:", e);
+      }
+    }
+
+    // If Supabase admin creds exist, check usage; otherwise skip gracefully.
     if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
       try {
         const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
@@ -91,9 +112,9 @@ serve(async (req) => {
           .eq("period_start", periodStart)
           .maybeSingle();
 
-        if (!error && data && typeof data.count === "number" && data.count >= DAILY_LIMIT) {
+        if (!error && data && typeof data.count === "number" && data.count >= effectiveDailyLimit) {
           return new Response(
-            JSON.stringify({ error: "Rate limit exceeded", userId, periodStart, limit: DAILY_LIMIT }),
+            JSON.stringify({ error: "Rate limit exceeded", userId, periodStart, limit: effectiveDailyLimit }),
             { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
