@@ -51,7 +51,7 @@ serve(async (req) => {
       });
     }
 
-    const { userId, dailyLimit } = await req.json();
+    const { userId, dailyLimit, monthlyLimit } = await req.json();
     if (!userId || typeof userId !== "string") {
       return new Response(JSON.stringify({ error: "userId required" }), {
         status: 400,
@@ -72,7 +72,7 @@ serve(async (req) => {
 
     const { error } = await adminClient
       .from("user_limits")
-      .upsert({ user_id: userId, daily_limit: limitNum, updated_at: new Date().toISOString() });
+      .upsert({ user_id: userId, daily_limit: limitNum, monthly_limit: Number(monthlyLimit) || undefined, updated_at: new Date().toISOString() });
 
     if (error) {
       console.error("Failed to upsert user limit:", error);
@@ -82,7 +82,7 @@ serve(async (req) => {
       });
     }
 
-    return new Response(JSON.stringify({ ok: true, userId, dailyLimit: limitNum }), {
+    return new Response(JSON.stringify({ ok: true, userId, dailyLimit: limitNum, monthlyLimit: Number(monthlyLimit) || undefined }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

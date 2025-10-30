@@ -40,15 +40,26 @@ serve(async (req) => {
       auth: { persistSession: false },
     });
 
-    // Determine effective limit
+    // Determine effective limits (daily and monthly) from user overrides or app defaults
     let effectiveDailyLimit = DEFAULT_DAILY_LIMIT;
+    let effectiveMonthlyLimit = Number(Deno.env.get("MONTHLY_IMAGE_LIMIT") || 100);
+    const { data: defaultsRow } = await adminClient
+      .from("app_settings")
+      .select("daily_default, monthly_default")
+      .eq("key", "default_limits")
+      .maybeSingle();
+    if (defaultsRow) {
+      effectiveDailyLimit = defaultsRow.daily_default ?? effectiveDailyLimit;
+      effectiveMonthlyLimit = defaultsRow.monthly_default ?? effectiveMonthlyLimit;
+    }
     const { data: limitRow } = await adminClient
       .from("user_limits")
-      .select("daily_limit")
+      .select("daily_limit, monthly_limit")
       .eq("user_id", user.id)
       .maybeSingle();
-    if (limitRow && typeof limitRow.daily_limit === "number") {
-      effectiveDailyLimit = limitRow.daily_limit as number;
+    if (limitRow) {
+      if (typeof limitRow.daily_limit === "number") effectiveDailyLimit = limitRow.daily_limit as number;
+      if (typeof limitRow.monthly_limit === "number") effectiveMonthlyLimit = limitRow.monthly_limit as number;
     }
 
     const today = new Date();
@@ -63,9 +74,19 @@ serve(async (req) => {
       .maybeSingle();
     const count = usageRow && typeof usageRow.count === "number" ? usageRow.count as number : 0;
     const remaining = Math.max(effectiveDailyLimit - count, 0);
+    // Monthly stats
+    const monthStart = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1)).toISOString().slice(0, 10);
+    const { data: monthRows } = await adminClient
+      .from("image_usage")
+      .select("count")
+      .eq("user_id", user.id)
+      .gte("period_start", monthStart)
+      .lte("period_start", periodStart);
+    const monthlyCount = Array.isArray(monthRows) ? monthRows.reduce((acc, r) => acc + (typeof r.count === "number" ? r.count : 0), 0) : 0;
+    const monthlyRemaining = Math.max(effectiveMonthlyLimit - monthlyCount, 0);
 
     return new Response(
-      JSON.stringify({ userId: user.id, periodStart, count, limit: effectiveDailyLimit, remaining }),
+      JSON.stringify({ userId: user.id, periodStart, count, limit: effectiveDailyLimit, remaining, monthlyCount, monthlyLimit: effectiveMonthlyLimit, monthlyRemaining }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e) {

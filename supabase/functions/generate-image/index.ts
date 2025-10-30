@@ -39,7 +39,8 @@ serve(async (req) => {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const DEFAULT_DAILY_LIMIT = Number(Deno.env.get("DAILY_IMAGE_LIMIT") || 50);
+    const DEFAULT_DAILY_LIMIT = Number(Deno.env.get("DAILY_IMAGE_LIMIT") || 10);
+    const DEFAULT_MONTHLY_LIMIT = Number(Deno.env.get("MONTHLY_IMAGE_LIMIT") || 100);
 
     // Require logged-in user: validate JWT from Authorization header via Supabase
     let userId: string | null = null;
@@ -81,18 +82,33 @@ serve(async (req) => {
     // If Supabase admin creds exist, check usage; otherwise skip gracefully.
     // Determine effective daily limit: per-user override if present
     let effectiveDailyLimit = DEFAULT_DAILY_LIMIT;
+    let effectiveMonthlyLimit = DEFAULT_MONTHLY_LIMIT;
     if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY && userId) {
       try {
         const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
           auth: { persistSession: false },
         });
+        // Read app defaults
+        const { data: defaultsRow } = await supabase
+          .from("app_settings")
+          .select("daily_default, monthly_default")
+          .eq("key", "default_limits")
+          .maybeSingle();
+        if (defaultsRow) {
+          effectiveDailyLimit = defaultsRow.daily_default ?? effectiveDailyLimit;
+          effectiveMonthlyLimit = defaultsRow.monthly_default ?? effectiveMonthlyLimit;
+        }
+        // Per-user overrides
         const { data: limitRow, error: limitErr } = await supabase
           .from("user_limits")
-          .select("daily_limit")
+          .select("daily_limit, monthly_limit")
           .eq("user_id", userId)
           .maybeSingle();
         if (!limitErr && limitRow && typeof limitRow.daily_limit === "number") {
           effectiveDailyLimit = limitRow.daily_limit as number;
+        }
+        if (!limitErr && limitRow && typeof limitRow.monthly_limit === "number") {
+          effectiveMonthlyLimit = limitRow.monthly_limit as number;
         }
       } catch (e) {
         console.warn("User limit fetch skipped:", e);
@@ -115,6 +131,23 @@ serve(async (req) => {
         if (!error && data && typeof data.count === "number" && data.count >= effectiveDailyLimit) {
           return new Response(
             JSON.stringify({ error: "Rate limit exceeded", userId, periodStart, limit: effectiveDailyLimit }),
+            { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        // Monthly check: sum counts in current month
+        const monthStart = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1))
+          .toISOString()
+          .slice(0, 10);
+        const { data: monthRows } = await supabase
+          .from("image_usage")
+          .select("count")
+          .eq("user_id", userId)
+          .gte("period_start", monthStart)
+          .lte("period_start", periodStart);
+        const monthlyCount = Array.isArray(monthRows) ? monthRows.reduce((acc, r) => acc + (typeof r.count === "number" ? r.count : 0), 0) : 0;
+        if (monthlyCount >= effectiveMonthlyLimit) {
+          return new Response(
+            JSON.stringify({ error: "Monthly rate limit exceeded", userId, monthStart, limit: effectiveMonthlyLimit }),
             { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
