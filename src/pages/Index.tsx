@@ -3,12 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Download, Sparkles } from "lucide-react";
+import { Loader2, Download, Sparkles, Shield } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Index = () => {
   const [prompt, setPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
@@ -149,6 +151,13 @@ const Index = () => {
         {userEmail ? (
           <>
             <span className="text-sm text-muted-foreground">Logged in as {userEmail}</span>
+            {ADMIN_EMAIL && userEmail.toLowerCase() === String(ADMIN_EMAIL).toLowerCase() && (
+              <Link to="/admin-quiet-6b27c9" className="inline-flex">
+                <Button variant="outline" size="sm">
+                  <Shield className="mr-2 h-4 w-4" /> Admin
+                </Button>
+              </Link>
+            )}
             <Button variant="outline" size="sm" onClick={handleSignOut}>Sign out</Button>
           </>
         ) : (

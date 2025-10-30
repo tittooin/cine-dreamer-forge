@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -8,6 +8,24 @@ const Admin = () => {
   const [userId, setUserId] = useState("");
   const [limit, setLimit] = useState("100");
   const [busy, setBusy] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
+
+  useEffect(() => {
+    let mounted = true;
+    const init = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (mounted) setUserEmail(data.session?.user?.email ?? null);
+    };
+    init();
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserEmail(session?.user?.email ?? null);
+    });
+    return () => {
+      mounted = false;
+      sub.subscription?.unsubscribe();
+    };
+  }, []);
 
   const applyLimit = async () => {
     if (!userId.trim()) {
@@ -37,6 +55,18 @@ const Admin = () => {
       setBusy(false);
     }
   };
+
+  // Client-side gate: show 403 if not admin
+  if (!userEmail || !ADMIN_EMAIL || userEmail.toLowerCase() !== String(ADMIN_EMAIL).toLowerCase()) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <div className="w-full max-w-xl bg-card border border-border rounded-xl p-6 space-y-2 text-center">
+          <h2 className="text-xl font-semibold">403: Admin Only</h2>
+          <p className="text-sm text-muted-foreground">Please login with admin email to access this page.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
