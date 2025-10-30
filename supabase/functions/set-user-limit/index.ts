@@ -35,6 +35,22 @@ serve(async (req) => {
       });
     }
 
+    // Admin enforcement via email
+    const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL");
+    if (!ADMIN_EMAIL) {
+      return new Response(JSON.stringify({ error: "Admin not configured" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const requesterEmail = user.email ?? "";
+    if (requesterEmail.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { userId, dailyLimit } = await req.json();
     if (!userId || typeof userId !== "string") {
       return new Response(JSON.stringify({ error: "userId required" }), {
