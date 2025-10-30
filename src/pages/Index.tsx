@@ -198,49 +198,58 @@ const Index = () => {
 
     // Heading
     const headingSize = Math.floor(canvas.width * 0.06);
-    ctx.font = `700 ${headingSize}px ${devFont}`;
+    const headingLineH = Math.floor(canvas.width * 0.065);
+    ctx.font = `${headingWeight} ${headingSize}px ${devFont}`;
     const headingLines = computeLines(ctx, heading, maxWidth);
+    const headingHeight = headingLines.length * headingLineH;
 
     // Bullets
     const bulletSize = Math.floor(canvas.width * 0.03);
-    const lineHeight = Math.floor(canvas.width * 0.035);
-    ctx.font = `400 ${bulletSize}px ${devFont}`;
-    let yStart = margin + headingSize; // approximate start for bullets block
+    const bulletLineH = Math.floor(canvas.width * 0.035);
+    ctx.font = `${bulletWeight} ${bulletSize}px ${devFont}`;
+    let yStart = margin + headingHeight;
     const bulletLines: string[] = [];
     bullets.forEach((b) => {
       const lines = computeLines(ctx, `• ${b}`, maxWidth);
       lines.forEach((ln) => bulletLines.push(ln));
     });
+    const bulletsHeight = bulletLines.length * bulletLineH + Math.floor(canvas.width * 0.02);
 
-    const totalHeight = headingLines.length * Math.floor(canvas.width * 0.065) + bulletLines.length * lineHeight + Math.floor(canvas.width * 0.05);
-
-    // Background band
-    if (bgEnabled) {
+    // Separate background bands
+    if (bgEnabled && headingBgEnabled) {
       ctx.save();
-      ctx.fillStyle = hexWithOpacity(bgColor, bgOpacity);
+      ctx.fillStyle = hexWithOpacity(headingBgColor, headingBgOpacity);
       const bandX = align === "center" ? (canvas.width - maxWidth) / 2 : margin;
       const bandY = margin - Math.floor(canvas.width * 0.02);
-      const bandW = maxWidth;
-      const bandH = totalHeight;
-      drawRoundedRect(ctx, bandX, bandY, bandW, bandH, Math.floor(canvas.width * 0.02));
+      drawRoundedRect(ctx, bandX, bandY, maxWidth, headingHeight + Math.floor(canvas.width * 0.02), Math.floor(canvas.width * 0.02));
+      ctx.restore();
+    }
+    if (bgEnabled && bulletsBgEnabled) {
+      ctx.save();
+      ctx.fillStyle = hexWithOpacity(bulletsBgColor, bulletsBgOpacity);
+      const bandX = align === "center" ? (canvas.width - maxWidth) / 2 : margin;
+      const bandY = yStart - Math.floor(canvas.width * 0.01);
+      drawRoundedRect(ctx, bandX, bandY, maxWidth, bulletsHeight, Math.floor(canvas.width * 0.02));
       ctx.restore();
     }
 
-    // Draw heading lines
-    ctx.font = `700 ${headingSize}px ${devFont}`;
-    drawLines(ctx, headingLines, xText, margin, Math.floor(canvas.width * 0.065));
+    // Draw heading
+    ctx.font = `${headingWeight} ${headingSize}px ${devFont}`;
+    if (shadowEnabled) { ctx.shadowColor = hexWithOpacity(shadowColor, 0.7); ctx.shadowBlur = Math.floor(canvas.width * shadowBlur); } else { ctx.shadowBlur = 0; }
+    drawLines(ctx, headingLines, xText, margin, headingLineH);
 
     // Draw bullets
-    ctx.font = `400 ${bulletSize}px ${devFont}`;
-    drawLines(ctx, bulletLines, xText, yStart, lineHeight);
+    ctx.font = `${bulletWeight} ${bulletSize}px ${devFont}`;
+    if (shadowEnabled) { ctx.shadowColor = hexWithOpacity(shadowColor, 0.7); ctx.shadowBlur = Math.floor(canvas.width * shadowBlur); } else { ctx.shadowBlur = 0; }
+    drawLines(ctx, bulletLines, xText, yStart, bulletLineH);
 
-    // Bullets
-    // CTA bottom center
+    // CTA bottom
     if (cta.trim()) {
-      ctx.font = `600 ${Math.floor(canvas.width * 0.032)}px ${devFont}`;
+      ctx.font = `${ctaWeight} ${Math.floor(canvas.width * 0.032)}px ${devFont}`;
       const ctaWidth = ctx.measureText(cta).width;
       const ctaX = align === "center" ? (canvas.width - ctaWidth) / 2 : margin;
       const ctaY = canvas.height - margin;
+      if (shadowEnabled) { ctx.shadowColor = hexWithOpacity(shadowColor, 0.7); ctx.shadowBlur = Math.floor(canvas.width * shadowBlur); } else { ctx.shadowBlur = 0; }
       ctx.fillText(cta, ctaX, ctaY);
       ctx.strokeText(cta, ctaX, ctaY);
     }
@@ -477,6 +486,80 @@ const Index = () => {
               <label className="text-sm">BG Opacity</label>
               <input type="range" min={0} max={0.8} step={0.05} className="w-full" value={bgOpacity} onChange={(e) => setBgOpacity(Number(e.target.value))} />
             </div>
+          </div>
+          {/* Advanced bands & font weights */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label className="text-sm">Heading Weight</label>
+              <select className="w-full h-10 bg-input border border-border rounded-md px-2" value={headingWeight} onChange={(e) => setHeadingWeight(e.target.value)}>
+                <option value="500">Medium</option>
+                <option value="600">Semibold</option>
+                <option value="700">Bold</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-sm">Bullet Weight</label>
+              <select className="w-full h-10 bg-input border border-border rounded-md px-2" value={bulletWeight} onChange={(e) => setBulletWeight(e.target.value)}>
+                <option value="400">Normal</option>
+                <option value="500">Medium</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-sm">CTA Weight</label>
+              <select className="w-full h-10 bg-input border border-border rounded-md px-2" value={ctaWeight} onChange={(e) => setCtaWeight(e.target.value)}>
+                <option value="500">Medium</option>
+                <option value="600">Semibold</option>
+                <option value="700">Bold</option>
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="flex items-center gap-2">
+              <input id="headingBgEnabled" type="checkbox" className="h-4 w-4" checked={headingBgEnabled} onChange={(e) => setHeadingBgEnabled(e.target.checked)} />
+              <label htmlFor="headingBgEnabled" className="text-sm">Heading band</label>
+            </div>
+            <div className="flex items-center gap-2">
+              <input id="bulletsBgEnabled" type="checkbox" className="h-4 w-4" checked={bulletsBgEnabled} onChange={(e) => setBulletsBgEnabled(e.target.checked)} />
+              <label htmlFor="bulletsBgEnabled" className="text-sm">Bullets band</label>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div>
+              <label className="text-sm">Heading Band Color</label>
+              <input type="color" className="w-full h-10" value={headingBgColor} onChange={(e) => setHeadingBgColor(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm">Heading Band Opacity</label>
+              <input type="range" min={0} max={0.8} step={0.05} className="w-full" value={headingBgOpacity} onChange={(e) => setHeadingBgOpacity(Number(e.target.value))} />
+            </div>
+            <div>
+              <label className="text-sm">Bullets Band Color</label>
+              <input type="color" className="w-full h-10" value={bulletsBgColor} onChange={(e) => setBulletsBgColor(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm">Bullets Band Opacity</label>
+              <input type="range" min={0} max={0.8} step={0.05} className="w-full" value={bulletsBgOpacity} onChange={(e) => setBulletsBgOpacity(Number(e.target.value))} />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="flex items-center gap-2">
+              <input id="shadowEnabled" type="checkbox" className="h-4 w-4" checked={shadowEnabled} onChange={(e) => setShadowEnabled(e.target.checked)} />
+              <label htmlFor="shadowEnabled" className="text-sm">Text shadow</label>
+            </div>
+            <div>
+              <label className="text-sm">Shadow Color</label>
+              <input type="color" className="w-full h-10" value={shadowColor} onChange={(e) => setShadowColor(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm">Shadow Blur</label>
+              <input type="range" min={0} max={0.03} step={0.002} className="w-full" value={shadowBlur} onChange={(e) => setShadowBlur(Number(e.target.value))} />
+            </div>
+          </div>
+          {/* Preset themes */}
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => { setTextColor('#ffffff'); setStrokeColor('#000000'); setStrokeStrength(0.004); setBgEnabled(true); setBgColor('#000000'); setBgOpacity(0.35); setHeadingBgEnabled(true); setBulletsBgEnabled(true); setShadowEnabled(true); setShadowColor('#000000'); setShadowBlur(0.01); }}>Dark</Button>
+            <Button variant="outline" size="sm" onClick={() => { setTextColor('#111111'); setStrokeColor('#ffffff'); setStrokeStrength(0.003); setBgEnabled(true); setBgColor('#ffffff'); setBgOpacity(0.4); setHeadingBgEnabled(true); setBulletsBgEnabled(true); setShadowEnabled(false); }}>Light</Button>
+            <Button variant="outline" size="sm" onClick={() => { setTextColor('#ffffff'); setStrokeColor('#ff00ff'); setStrokeStrength(0.004); setBgEnabled(true); setBgColor('#7c3aed'); setBgOpacity(0.35); setHeadingBgEnabled(true); setBulletsBgEnabled(true); setShadowEnabled(true); setShadowColor('#7c3aed'); setShadowBlur(0.012); }}>Vibrant</Button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
