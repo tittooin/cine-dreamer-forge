@@ -241,6 +241,19 @@ const Index = () => {
           </p>
         </div>
 
+        {/* Tools */}
+        <div className="flex flex-wrap items-center gap-3 justify-center">
+          <Link to="/generate" className="inline-flex">
+            <Button variant="outline"><Sparkles className="mr-2 h-4 w-4" /> Text to Image (CPU)</Button>
+          </Link>
+          <Link to="/image2video" className="inline-flex">
+            <Button variant="outline"><Info className="mr-2 h-4 w-4" /> Image to Video (CPU)</Button>
+          </Link>
+          <Link to="/poster" className="inline-flex">
+            <Button variant="outline">Poster Editor</Button>
+          </Link>
+        </div>
+
         {/* Input Section */}
         <div className="bg-card border border-border rounded-2xl p-6 space-y-4 shadow-2xl backdrop-blur-sm">
           <Textarea
