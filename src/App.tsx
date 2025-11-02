@@ -7,8 +7,6 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Admin from "./pages/Admin";
 import PosterEditor from "./pages/PosterEditor";
-import TextToImage from "./pages/TextToImage";
-import ImageToVideo from "./pages/ImageToVideo";
 
 const queryClient = new QueryClient();
 
@@ -21,8 +19,6 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/poster" element={<PosterEditor />} />
-          <Route path="/generate" element={<TextToImage />} />
-          <Route path="/image2video" element={<ImageToVideo />} />
           {/* Hidden admin route: not linked anywhere */}
           <Route path="/admin-quiet-6b27c9" element={<Admin />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

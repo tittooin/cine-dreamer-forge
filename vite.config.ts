@@ -10,10 +10,6 @@ export default defineConfig(({ mode }) => ({
     port: 8080,
   },
   base: mode === "production" ? "/cine-dreamer-forge/" : "/",
-  build: {
-    outDir: "docs",
-    emptyOutDir: true,
-  },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
     alias: {
