@@ -158,26 +158,51 @@ serve(async (req) => {
 
     console.log("Generating image via Hugging Face with prompt:", prompt);
 
-    // You can swap the model below to any text-to-image model supported
-    // by the Hugging Face Inference API.
+    // Using Hugging Face Router API which is compatible with OpenAI API
+    const routerUrl = "https://router.huggingface.co/v1";
     const model = "black-forest-labs/FLUX.1-schnell";
-
-    const hfUrl = HF_ENDPOINT_URL
-      ? HF_ENDPOINT_URL
-      : `https://api-inference.huggingface.co/models/${model}`;
-
-    const response = await fetch(hfUrl, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${HF_ENDPOINT_TOKEN}`,
-        "Content-Type": "application/json",
-        Accept: "image/png",
-      },
-      body: JSON.stringify({
-        inputs: prompt,
-        options: { wait_for_model: true },
-      }),
-    });
+    
+    // Use Router API if HF_ENDPOINT_URL is not set
+    const hfUrl = HF_ENDPOINT_URL || routerUrl;
+    
+    // For Router API, we need to use chat completions format
+    const isRouterApi = hfUrl === routerUrl;
+    
+    let response;
+    if (isRouterApi) {
+      // Using Router API with OpenAI-compatible format
+      response = await fetch(`${hfUrl}/chat/completions`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${HF_ENDPOINT_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: [
+            {
+              role: "user",
+              content: prompt
+            }
+          ],
+          max_tokens: 1024,
+        }),
+      });
+    } else {
+      // Using traditional Hugging Face Inference API
+      response = await fetch(`${hfUrl}/models/${model}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${HF_ENDPOINT_TOKEN}`,
+          "Content-Type": "application/json",
+          Accept: "image/png",
+        },
+        body: JSON.stringify({
+          inputs: prompt,
+          options: { wait_for_model: true },
+        }),
+      });
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -187,9 +212,38 @@ serve(async (req) => {
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-    // HF returns binary image data; convert to a data URL so the frontend
+
+    let imageData;
+    if (isRouterApi) {
+      // Handle Router API response (which might be different)
+      const jsonResponse = await response.json();
+      // Extract image data from the response
+      // This depends on the actual response format from the Router API
+      // You might need to adjust this based on the actual response
+      imageData = jsonResponse.choices[0].message.content;
+    } else {
+      // Traditional HF returns binary image data
+      imageData = await response.arrayBuffer();
+    }
     // can display and download it without needing storage.
-    const arrayBuffer = await response.arrayBuffer();
+    let arrayBuffer;
+    if (isRouterApi) {
+      // For Router API, we need to decode the base64 image
+      try {
+        // Assuming the response contains base64 encoded image
+        const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
+        arrayBuffer = Buffer.from(base64Data, 'base64');
+      } catch (error) {
+        console.error("Error processing Router API response:", error);
+        return new Response(
+          JSON.stringify({ error: "Failed to process image data", detail: error.message }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    } else {
+      // We already have the arrayBuffer for traditional API
+      arrayBuffer = imageData;
+    }
     const bytes = new Uint8Array(arrayBuffer);
     let binary = "";
     for (let i = 0; i < bytes.byteLength; i++) {
