@@ -160,7 +160,7 @@ serve(async (req) => {
 
     // You can swap the model below to any text-to-image model supported
     // by the Hugging Face Inference API.
-    const model = "black-forest-labs/FLUX.1-schnell";
+    const model = "stabilityai/stable-diffusion-xl-base-1.0";
 
     const hfUrl = HF_ENDPOINT_URL
       ? HF_ENDPOINT_URL
