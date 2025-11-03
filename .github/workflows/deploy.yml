@@ -26,6 +26,9 @@ jobs:
           node-version: 18
       - name: Install dependencies
         run: npm ci
+      - name: Create .env file
+        run: |
+          echo "HUGGINGFACE_API_KEY=${{ secrets.HUGGINGFACE_API_KEY }}" > .env
       - name: Build
         run: npm run build
       - name: Add SPA fallback for GitHub Pages
