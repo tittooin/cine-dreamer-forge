@@ -90,10 +90,16 @@ const Index = () => {
         body: { prompt },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Generate-image failed:", error);
+        toast.error(error.message || "Failed to generate image");
+        return;
+      }
 
-      if (data.error) {
-        toast.error(data.error);
+      if (data && data.error) {
+        console.error("Hugging Face error detail:", data);
+        const detail = typeof data.detail === "string" ? data.detail.slice(0, 180) : "";
+        toast.error(`${data.error}${detail ? ": " + detail : ""}`);
         return;
       }
 
