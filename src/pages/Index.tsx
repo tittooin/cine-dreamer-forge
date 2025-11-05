@@ -98,7 +98,12 @@ const Index = () => {
 
       if (data && data.error) {
         console.error("Hugging Face error detail:", data);
-        const detail = typeof data.detail === "string" ? data.detail.slice(0, 180) : "";
+        let detail = "";
+        if (data.detail !== undefined) {
+          if (typeof data.detail === "string") detail = data.detail;
+          else detail = JSON.stringify(data.detail);
+        }
+        detail = detail.slice(0, 240);
         toast.error(`${data.error}${detail ? ": " + detail : ""}`);
         return;
       }

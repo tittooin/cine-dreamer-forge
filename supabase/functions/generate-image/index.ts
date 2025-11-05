@@ -163,7 +163,16 @@ serve(async (req) => {
     const inferenceUrl = "https://router.huggingface.co/hf-inference";
     const model = "black-forest-labs/FLUX.1-schnell";
 
-    const hfUrl = HF_ENDPOINT_URL || inferenceUrl;
+    // If HF_ENDPOINT_URL is provided but points to deprecated api-inference,
+    // force-switch to the router hf-inference endpoint
+    const hfUrl = (() => {
+      const raw = HF_ENDPOINT_URL?.trim();
+      if (!raw) return inferenceUrl;
+      if (raw.includes("api-inference.huggingface.co")) {
+        return inferenceUrl;
+      }
+      return raw;
+    })();
 
     // Using Hugging Face Inference API (via Router) which returns binary image data
     const response = await fetch(`${hfUrl}/models/${model}`, {
@@ -181,10 +190,10 @@ serve(async (req) => {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Hugging Face error:", response.status, errorText);
+      console.error("Hugging Face error:", { status: response.status, url: `${hfUrl}/models/${model}` , detail: errorText });
       // Propagate a non-200 status so the client receives an 'error' from invoke()
       return new Response(
-        JSON.stringify({ error: "Hugging Face error", status: response.status, detail: errorText }),
+        JSON.stringify({ error: "Hugging Face error", status: response.status, endpoint: hfUrl, detail: errorText?.slice(0, 2000) }),
         { status: response.status || 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
