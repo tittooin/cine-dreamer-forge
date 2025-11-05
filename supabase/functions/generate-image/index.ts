@@ -158,14 +158,14 @@ serve(async (req) => {
 
     console.log("Generating image via Hugging Face with prompt:", prompt);
 
-    // Prefer the stable Hugging Face Inference API for image generation
-    // If a dedicated endpoint URL is provided, use it; otherwise default to public inference API
-    const inferenceUrl = "https://api-inference.huggingface.co";
+    // Use the new Hugging Face Router Inference endpoint (api-inference deprecated)
+    // If a dedicated endpoint URL is provided, use it; otherwise default to router hf-inference
+    const inferenceUrl = "https://router.huggingface.co/hf-inference";
     const model = "black-forest-labs/FLUX.1-schnell";
 
     const hfUrl = HF_ENDPOINT_URL || inferenceUrl;
 
-    // Using Hugging Face Inference API which returns binary image data
+    // Using Hugging Face Inference API (via Router) which returns binary image data
     const response = await fetch(`${hfUrl}/models/${model}`, {
       method: "POST",
       headers: {
