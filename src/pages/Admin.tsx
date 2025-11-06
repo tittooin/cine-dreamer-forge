@@ -16,17 +16,38 @@ const Admin = () => {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
   const pageSize = 10;
+  // Registered users state
+  const [regQuery, setRegQuery] = useState("");
+  const [regPage, setRegPage] = useState(0);
+  const [regUsers, setRegUsers] = useState<Array<{ id: string; email: string; created_at: string }>>([]);
+  const [regPageSize, setRegPageSize] = useState(20);
+
+  // Admin check helper
+  const isAdminEmail = (email: string | null) => {
+    if (!email || !ADMIN_EMAIL) return false;
+    return email.toLowerCase() === String(ADMIN_EMAIL).toLowerCase();
+  };
 
   useEffect(() => {
     let mounted = true;
     const init = async () => {
       const { data } = await supabase.auth.getSession();
-      if (mounted) setUserEmail(data.session?.user?.email ?? null);
-      await refreshList();
+      const email = data.session?.user?.email ?? null;
+      if (mounted) setUserEmail(email);
+      // Only load admin lists if requester is admin
+      if (isAdminEmail(email)) {
+        await refreshList();
+        await refreshRegistered();
+      }
     };
     init();
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUserEmail(session?.user?.email ?? null);
+      const email = session?.user?.email ?? null;
+      setUserEmail(email);
+      // Refresh only for admin
+      if (isAdminEmail(email)) {
+        refreshList().catch(() => {});
+      }
     });
     return () => {
       mounted = false;
@@ -35,6 +56,8 @@ const Admin = () => {
   }, []);
 
   const refreshList = async () => {
+    // If not admin, do nothing (avoid non-2xx function errors)
+    if (!isAdminEmail(userEmail)) return;
     try {
       const { data, error } = await supabase.functions.invoke("list-user-limits", {
         body: { page, pageSize, q: query }
@@ -45,8 +68,26 @@ const Admin = () => {
       console.error(e);
     }
   };
+  const refreshRegistered = async () => {
+    if (!isAdminEmail(userEmail)) return;
+    try {
+      const { data, error } = await supabase.functions.invoke("list-users", {
+        body: { page: regPage, pageSize: regPageSize, q: regQuery },
+      });
+      if (error) throw error;
+      if (data?.items) setRegUsers(data.items);
+      else setRegUsers([]);
+    } catch (e) {
+      console.error("list-users error", e);
+      toast.error("Failed to load registered users");
+    }
+  };
 
   const applyLimit = async () => {
+    if (!isAdminEmail(userEmail)) {
+      toast.error("Admin only");
+      return;
+    }
     if (!userId.trim()) {
       toast.error("Enter a valid userId");
       return;
@@ -113,6 +154,10 @@ const Admin = () => {
               variant="outline"
               size="sm"
               onClick={async () => {
+                if (!isAdminEmail(userEmail)) {
+                  toast.error("Admin only");
+                  return;
+                }
                 const dd = Number(limit);
                 const md = Number(monthlyDefault);
                 const { data, error } = await supabase.functions.invoke("set-default-limits", {
@@ -256,6 +301,81 @@ const Admin = () => {
                 }).length;
                 const maxPage = Math.max(0, Math.ceil(total / pageSize) - 1);
                 return page >= maxPage;
+              })()}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+
+        {/* Registered Users */}
+        <div className="pt-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-medium">Registered Users</h3>
+            <Button variant="outline" size="sm" onClick={refreshRegistered}>Refresh</Button>
+          </div>
+          <div className="mt-2 grid grid-cols-3 gap-2">
+            <Input placeholder="Search by email or user_id" value={regQuery} onChange={(e) => { setRegQuery(e.target.value); setRegPage(0); }} />
+            <Input type="number" placeholder="Page size" value={String(regPageSize)} onChange={(e) => setRegPageSize(Math.max(1, Number(e.target.value) || 20))} />
+            <Button variant="outline" size="sm" onClick={refreshRegistered}>Load Registered Users</Button>
+          </div>
+          <div className="mt-2 space-y-2">
+            {regUsers
+              .filter((u) => {
+                const q = regQuery.trim().toLowerCase();
+                if (!q) return true;
+                return (u.email ?? "").toLowerCase().includes(q) || u.id.toLowerCase().includes(q);
+              })
+              .slice(regPage * pageSize, regPage * pageSize + pageSize)
+              .map((u) => (
+                <div key={u.id} className="flex items-center justify-between border rounded-md p-2">
+                  <div>
+                    <div className="text-sm font-mono">{u.id}</div>
+                    <div className="text-xs text-muted-foreground">{u.email || "(no email)"}</div>
+                    <div className="text-xs text-muted-foreground">Joined: {new Date(u.created_at).toLocaleString()}</div>
+                  </div>
+                </div>
+              ))}
+            {regUsers.length === 0 && (
+              <div className="text-sm text-muted-foreground">No registered users.</div>
+            )}
+          </div>
+          <div className="mt-2 flex items-center justify-between">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setRegPage((p) => Math.max(p - 1, 0))}
+              disabled={regPage === 0}
+            >
+              Prev
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              Page {regPage + 1} of {Math.max(1, Math.ceil(regUsers.filter((u) => {
+                const q = regQuery.trim().toLowerCase();
+                if (!q) return true;
+                return (u.email ?? "").toLowerCase().includes(q) || u.id.toLowerCase().includes(q);
+              }).length / pageSize))}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setRegPage((p) => {
+                const total = regUsers.filter((u) => {
+                  const q = regQuery.trim().toLowerCase();
+                  if (!q) return true;
+                return (u.email ?? "").toLowerCase().includes(q) || u.id.toLowerCase().includes(q);
+                }).length;
+                const maxPage = Math.max(0, Math.ceil(total / pageSize) - 1);
+                return Math.min(p + 1, maxPage);
+              })}
+              disabled={(() => {
+                const total = regUsers.filter((u) => {
+                  const q = regQuery.trim().toLowerCase();
+                  if (!q) return true;
+                  return (u.email ?? "").toLowerCase().includes(q) || u.id.toLowerCase().includes(q);
+                }).length;
+                const maxPage = Math.max(0, Math.ceil(total / pageSize) - 1);
+                return regPage >= maxPage;
               })()}
             >
               Next

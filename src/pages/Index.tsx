@@ -123,6 +123,33 @@ const Index = () => {
     }
   };
 
+  // Start Stripe Checkout via Edge Function
+  const handleUpgrade = async () => {
+    if (!userEmail) {
+      toast.error("Please login with Google first");
+      return;
+    }
+    try {
+      const priceId = "price_12345_basic"; // replace with real Stripe Price ID
+      const { data, error } = await supabase.functions.invoke("create-checkout-session", {
+        body: { priceId, mode: "payment" },
+      });
+      if (error) {
+        console.error("Checkout error:", error);
+        toast.error(error.message || "Checkout failed");
+        return;
+      }
+      if (data?.url) {
+        window.location.href = data.url;
+      } else {
+        toast.error("Invalid checkout response");
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to start checkout");
+    }
+  };
+
   const watermarkSrc = `${import.meta.env.BASE_URL}logo.png`;
 
 
@@ -200,18 +227,18 @@ const Index = () => {
           <>
             <span className="text-sm text-muted-foreground">Logged in as {userEmail}</span>
             {usage && (() => {
-              const pct = usage.limit > 0 ? (usage.remaining / usage.limit) : 0;
-              const color = usage.remaining <= 5 ? "bg-red-500/15 text-red-600 border-red-500/30" : pct <= 0.2 ? "bg-orange-500/15 text-orange-600 border-orange-500/30" : "bg-green-500/15 text-green-700 border-green-500/30";
+              const credits = typeof (usage as any).credits === "number" ? (usage as any).credits as number : usage.remaining;
+              const color = credits <= 5 ? "bg-red-500/15 text-red-600 border-red-500/30" : credits <= 10 ? "bg-orange-500/15 text-orange-600 border-orange-500/30" : "bg-green-500/15 text-green-700 border-green-500/30";
               return (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className={`text-xs px-2 py-1 border rounded-md cursor-help ${color}`}>Today: {usage.count} / {usage.limit} ({usage.remaining} left)</span>
+                    <span className={`text-xs px-2 py-1 border rounded-md cursor-help ${color}`}>Credits: {credits} left</span>
                   </TooltipTrigger>
                   <TooltipContent>
                     <div className="text-xs space-y-1">
-                      <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-600" /> Green: healthy remaining</div>
-                      <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-500" /> Orange: ≤20% remaining</div>
-                      <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-600" /> Red: ≤5 left today</div>
+                      <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-600" /> Green: 10+ credits</div>
+                      <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-500" /> Orange: 6–10 credits</div>
+                      <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-600" /> Red: ≤5 credits</div>
                     </div>
                   </TooltipContent>
                 </Tooltip>
@@ -225,6 +252,7 @@ const Index = () => {
               </Link>
             )}
             <Button variant="outline" size="sm" onClick={handleSignOut}>Sign out</Button>
+            <Button size="sm" onClick={handleUpgrade}>Upgrade</Button>
           </>
         ) : (
           <Button size="sm" onClick={handleSignInGoogle}>Continue with Google</Button>

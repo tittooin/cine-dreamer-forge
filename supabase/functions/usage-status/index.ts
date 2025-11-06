@@ -15,7 +15,6 @@ serve(async (req) => {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const DEFAULT_DAILY_LIMIT = Number(Deno.env.get("DAILY_IMAGE_LIMIT") || 50);
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
       return new Response(JSON.stringify({ error: "Server not configured" }), {
         status: 500,
@@ -40,53 +39,19 @@ serve(async (req) => {
       auth: { persistSession: false },
     });
 
-    // Determine effective limits (daily and monthly) from user overrides or app defaults
-    let effectiveDailyLimit = DEFAULT_DAILY_LIMIT;
-    let effectiveMonthlyLimit = Number(Deno.env.get("MONTHLY_IMAGE_LIMIT") || 100);
-    const { data: defaultsRow } = await adminClient
-      .from("app_settings")
-      .select("daily_default, monthly_default")
-      .eq("key", "default_limits")
+    // Credit-based status: initialize if missing, then return totals
+    let { data: credits } = await adminClient
+      .from("image_credits")
+      .select("free_remaining, paid_credits")
+      .eq("user_id", user.id)
       .maybeSingle();
-    if (defaultsRow) {
-      effectiveDailyLimit = defaultsRow.daily_default ?? effectiveDailyLimit;
-      effectiveMonthlyLimit = defaultsRow.monthly_default ?? effectiveMonthlyLimit;
+    if (!credits) {
+      await adminClient.from("image_credits").insert({ user_id: user.id, free_remaining: 5, paid_credits: 0 });
+      credits = { free_remaining: 5, paid_credits: 0 } as any;
     }
-    const { data: limitRow } = await adminClient
-      .from("user_limits")
-      .select("daily_limit, monthly_limit")
-      .eq("user_id", user.id)
-      .maybeSingle();
-    if (limitRow) {
-      if (typeof limitRow.daily_limit === "number") effectiveDailyLimit = limitRow.daily_limit as number;
-      if (typeof limitRow.monthly_limit === "number") effectiveMonthlyLimit = limitRow.monthly_limit as number;
-    }
-
-    const today = new Date();
-    const periodStart = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()))
-      .toISOString()
-      .slice(0, 10);
-    const { data: usageRow } = await adminClient
-      .from("image_usage")
-      .select("count")
-      .eq("user_id", user.id)
-      .eq("period_start", periodStart)
-      .maybeSingle();
-    const count = usageRow && typeof usageRow.count === "number" ? usageRow.count as number : 0;
-    const remaining = Math.max(effectiveDailyLimit - count, 0);
-    // Monthly stats
-    const monthStart = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1)).toISOString().slice(0, 10);
-    const { data: monthRows } = await adminClient
-      .from("image_usage")
-      .select("count")
-      .eq("user_id", user.id)
-      .gte("period_start", monthStart)
-      .lte("period_start", periodStart);
-    const monthlyCount = Array.isArray(monthRows) ? monthRows.reduce((acc, r) => acc + (typeof r.count === "number" ? r.count : 0), 0) : 0;
-    const monthlyRemaining = Math.max(effectiveMonthlyLimit - monthlyCount, 0);
-
+    const remaining = (Number(credits.free_remaining) || 0) + (Number(credits.paid_credits) || 0);
     return new Response(
-      JSON.stringify({ userId: user.id, periodStart, count, limit: effectiveDailyLimit, remaining, monthlyCount, monthlyLimit: effectiveMonthlyLimit, monthlyRemaining }),
+      JSON.stringify({ userId: user.id, credits: remaining, free_remaining: credits.free_remaining, paid_credits: credits.paid_credits, remaining, limit: remaining, count: 0 }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e) {

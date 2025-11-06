@@ -79,80 +79,36 @@ serve(async (req) => {
       .toISOString()
       .slice(0, 10);
 
-    // If Supabase admin creds exist, check usage; otherwise skip gracefully.
-    // Determine effective daily limit: per-user override if present
-    let effectiveDailyLimit = DEFAULT_DAILY_LIMIT;
-    let effectiveMonthlyLimit = DEFAULT_MONTHLY_LIMIT;
+    // Credit-based access: first 5 free, then consume paid credits (₹5 per image)
+    let consumeFrom: "free" | "paid" | null = null;
     if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY && userId) {
       try {
         const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
           auth: { persistSession: false },
         });
-        // Read app defaults
-        const { data: defaultsRow } = await supabase
-          .from("app_settings")
-          .select("daily_default, monthly_default")
-          .eq("key", "default_limits")
-          .maybeSingle();
-        if (defaultsRow) {
-          effectiveDailyLimit = defaultsRow.daily_default ?? effectiveDailyLimit;
-          effectiveMonthlyLimit = defaultsRow.monthly_default ?? effectiveMonthlyLimit;
-        }
-        // Per-user overrides
-        const { data: limitRow, error: limitErr } = await supabase
-          .from("user_limits")
-          .select("daily_limit, monthly_limit")
+        let { data: credits } = await supabase
+          .from("image_credits")
+          .select("free_remaining, paid_credits")
           .eq("user_id", userId)
           .maybeSingle();
-        if (!limitErr && limitRow && typeof limitRow.daily_limit === "number") {
-          effectiveDailyLimit = limitRow.daily_limit as number;
+        if (!credits) {
+          await supabase
+            .from("image_credits")
+            .insert({ user_id: userId, free_remaining: 5, paid_credits: 0 });
+          credits = { free_remaining: 5, paid_credits: 0 } as any;
         }
-        if (!limitErr && limitRow && typeof limitRow.monthly_limit === "number") {
-          effectiveMonthlyLimit = limitRow.monthly_limit as number;
-        }
-      } catch (e) {
-        console.warn("User limit fetch skipped:", e);
-      }
-    }
-
-    // If Supabase admin creds exist, check usage; otherwise skip gracefully.
-    if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
-      try {
-        const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-          auth: { persistSession: false },
-        });
-        const { data, error } = await supabase
-          .from("image_usage")
-          .select("count")
-          .eq("user_id", userId)
-          .eq("period_start", periodStart)
-          .maybeSingle();
-
-        if (!error && data && typeof data.count === "number" && data.count >= effectiveDailyLimit) {
+        if (typeof credits.free_remaining === "number" && credits.free_remaining > 0) {
+          consumeFrom = "free";
+        } else if (typeof credits.paid_credits === "number" && credits.paid_credits > 0) {
+          consumeFrom = "paid";
+        } else {
           return new Response(
-            JSON.stringify({ error: "Rate limit exceeded", userId, periodStart, limit: effectiveDailyLimit }),
-            { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-        // Monthly check: sum counts in current month
-        const monthStart = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1))
-          .toISOString()
-          .slice(0, 10);
-        const { data: monthRows } = await supabase
-          .from("image_usage")
-          .select("count")
-          .eq("user_id", userId)
-          .gte("period_start", monthStart)
-          .lte("period_start", periodStart);
-        const monthlyCount = Array.isArray(monthRows) ? monthRows.reduce((acc, r) => acc + (typeof r.count === "number" ? r.count : 0), 0) : 0;
-        if (monthlyCount >= effectiveMonthlyLimit) {
-          return new Response(
-            JSON.stringify({ error: "Monthly rate limit exceeded", userId, monthStart, limit: effectiveMonthlyLimit }),
-            { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            JSON.stringify({ error: "No credits remaining", status: 402, detail: "You have used 5 free images. Purchase credits to continue (₹5 per image)." }),
+            { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
       } catch (e) {
-        console.warn("Quota check skipped:", e);
+        console.warn("Credit check skipped:", e);
       }
     }
 
@@ -210,32 +166,41 @@ serve(async (req) => {
 
     console.log("Image generation completed (data URL length):", dataUrl.length);
 
-    // After success, increment usage counter (best-effort)
-    if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY && userId) {
+    // After success, consume credit
+    if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY && userId && consumeFrom) {
       try {
         const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
           auth: { persistSession: false },
         });
-        // Upsert: if row exists, increment; else create with count=1
-        const { data, error } = await supabase
-          .from("image_usage")
-          .select("count")
-          .eq("user_id", userId)
-          .eq("period_start", periodStart)
-          .maybeSingle();
-        if (!error && data && typeof data.count === "number") {
+        if (consumeFrom === "free") {
           await supabase
-            .from("image_usage")
-            .update({ count: (data.count as number) + 1 })
-            .eq("user_id", userId)
-            .eq("period_start", periodStart);
+            .from("image_credits")
+            .update({ free_remaining: (await (async () => {
+              const { data } = await supabase
+                .from("image_credits")
+                .select("free_remaining")
+                .eq("user_id", userId)
+                .maybeSingle();
+              const fr = (data?.free_remaining ?? 1) as number;
+              return Math.max(fr - 1, 0);
+            })(), updated_at: new Date().toISOString() })
+            .eq("user_id", userId);
         } else {
           await supabase
-            .from("image_usage")
-            .insert({ user_id: userId, period_start: periodStart, count: 1 });
+            .from("image_credits")
+            .update({ paid_credits: (await (async () => {
+              const { data } = await supabase
+                .from("image_credits")
+                .select("paid_credits")
+                .eq("user_id", userId)
+                .maybeSingle();
+              const pc = (data?.paid_credits ?? 1) as number;
+              return Math.max(pc - 1, 0);
+            })(), updated_at: new Date().toISOString() })
+            .eq("user_id", userId);
         }
       } catch (e) {
-        console.warn("Quota increment skipped:", e);
+        console.warn("Credit decrement skipped:", e);
       }
     }
     return new Response(
