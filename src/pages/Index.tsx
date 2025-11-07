@@ -15,6 +15,9 @@ const Index = () => {
   const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
   const [usage, setUsage] = useState<{ count: number; limit: number; remaining: number } | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [showPayModal, setShowPayModal] = useState(false);
+  const [upiLink, setUpiLink] = useState<string>("");
+  const [qrUrl, setQrUrl] = useState<string>("");
   // Poster editing moved to dedicated page (/poster)
 
   useEffect(() => {
@@ -70,14 +73,18 @@ const Index = () => {
       toast.error("Please login with Google first");
       return;
     }
-    if (usage) {
-      if (usage.remaining <= 0) {
-        toast.error("Daily limit reached. Try again tomorrow.");
-        return;
-      }
-      if (usage.remaining <= 5) {
-        toast.warning(`Approaching limit: ${usage.remaining} left today`);
-      }
+    // Credits gating: when 0, show UPI modal instead of error
+    const credits = usage ? (typeof (usage as any).credits === "number" ? (usage as any).credits as number : usage.remaining) : 0;
+    if (credits <= 0) {
+      const pa = "more.43@superyes";
+      const pn = "TittoosAI";
+      const am = "2.99";
+      const tn = encodeURIComponent("Image credit");
+      const link = `upi://pay?pa=${pa}&pn=${pn}&am=${am}&cu=INR&tn=${tn}`;
+      setUpiLink(link);
+      setQrUrl(`https://chart.googleapis.com/chart?cht=qr&chs=256x256&chl=${encodeURIComponent(link)}`);
+      setShowPayModal(true);
+      return;
     }
     if (!prompt.trim()) {
       toast.error("Please enter a prompt");
@@ -252,12 +259,48 @@ const Index = () => {
               </Link>
             )}
             <Button variant="outline" size="sm" onClick={handleSignOut}>Sign out</Button>
-            <Button size="sm" onClick={handleUpgrade}>Upgrade</Button>
           </>
         ) : (
           <Button size="sm" onClick={handleSignInGoogle}>Continue with Google</Button>
         )}
       </div>
+
+      {showPayModal && (
+        <div className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm flex items-center justify-center">
+          <div className="w-full max-w-md bg-card border border-border rounded-xl p-4 space-y-3">
+            <h3 className="text-lg font-semibold">Buy 1 Credit (₹2.99)</h3>
+            <p className="text-xs text-muted-foreground">Pay via UPI to proceed. Scan the QR or open your UPI app.</p>
+            <div className="flex items-center justify-center">
+              <img src={qrUrl} alt="UPI QR" className="w-48 h-48 border rounded-md" />
+            </div>
+            <div className="text-xs"><b>UPI ID:</b> more.43@superyes</div>
+            <div className="grid grid-cols-2 gap-2">
+              <a href={upiLink} className="w-full" onClick={() => toast.info("Opening UPI app...")}> 
+                <Button className="w-full">Open UPI App</Button>
+              </a>
+              <Button variant="outline" onClick={() => setShowPayModal(false)}>Cancel</Button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  if (!userEmail) { toast.error("Login first"); return; }
+                  const { data, error } = await supabase.functions.invoke("confirm-upi-payment", { body: { amount: 2.99 } });
+                  if (error || (data && (data as any).error)) { toast.error("Payment confirmation failed"); return; }
+                  toast.success("Credit added");
+                  setShowPayModal(false);
+                  try {
+                    const { data: u } = await supabase.functions.invoke("usage-status");
+                    if (u && typeof u.count === "number") setUsage({ count: u.count, limit: u.limit, remaining: u.remaining });
+                  } catch {}
+                }}
+              >I've paid</Button>
+              <Button variant="outline" onClick={() => { const a = document.createElement("a"); a.href = upiLink; a.click(); }}>Retry Open</Button>
+            </div>
+            <p className="text-xs text-muted-foreground">Note: Automatic verification will be added later via PSP webhooks. For now, tap “I've paid” after successful transfer.</p>
+          </div>
+        </div>
+      )}
       {/* Animated gradient background */}
       <div className="absolute inset-0 opacity-20">
         <div className="absolute top-0 -left-4 w-96 h-96 bg-primary rounded-full mix-blend-multiply filter blur-3xl animate-pulse" />
@@ -342,6 +385,14 @@ const Index = () => {
           </div>
         )}
       </div>
+    </div>
+    {/* Footer policy links */}
+    <div className="w-full border-t border-border mt-6 py-4 text-center text-xs text-muted-foreground">
+      <a href={`${import.meta.env.BASE_URL}contact`} className="mx-2 underline">Contact</a>
+      <a href={`${import.meta.env.BASE_URL}privacy`} className="mx-2 underline">Privacy</a>
+      <a href={`${import.meta.env.BASE_URL}terms`} className="mx-2 underline">Terms</a>
+      <a href={`${import.meta.env.BASE_URL}refunds`} className="mx-2 underline">Refunds</a>
+      <a href={`${import.meta.env.BASE_URL}shipping`} className="mx-2 underline">Shipping</a>
     </div>
   );
 };
