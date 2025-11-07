@@ -38,6 +38,26 @@ jobs:
         run: npm run build
       - name: Add SPA fallback for GitHub Pages
         run: cp dist/index.html dist/404.html
+      - name: Add legacy path redirect (/cine-dreamer-forge -> /)
+        run: |
+          mkdir -p dist/cine-dreamer-forge
+          cat > dist/cine-dreamer-forge/index.html << 'EOF'
+          <!doctype html>
+          <html>
+            <head>
+              <meta charset="UTF-8" />
+              <meta http-equiv="refresh" content="0;URL=/" />
+              <script>
+                try { window.location.replace('/' + window.location.search + window.location.hash); } catch (e) { window.location.href = '/'; }
+              </script>
+            </head>
+            <body></body>
+          </html>
+          EOF
+      - name: Serve built assets also under legacy path
+        run: |
+          mkdir -p dist/cine-dreamer-forge/assets
+          cp -r dist/assets/* dist/cine-dreamer-forge/assets/
       - name: Add custom domain CNAME
         run: echo "tittoos.cloud" > dist/CNAME
       - name: Upload artifact
