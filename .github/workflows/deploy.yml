@@ -38,6 +38,8 @@ jobs:
         run: npm run build
       - name: Add SPA fallback for GitHub Pages
         run: cp dist/index.html dist/404.html
+      - name: Add custom domain CNAME
+        run: echo "tittoos.cloud" > dist/CNAME
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
