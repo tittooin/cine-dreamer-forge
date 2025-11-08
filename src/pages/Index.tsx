@@ -228,7 +228,12 @@ const Index = () => {
             <Button variant="outline" size="sm" onClick={handleSignOut}>Sign out</Button>
           </>
         ) : (
-          <Button size="sm" onClick={handleSignInGoogle}>Continue with Google</Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" onClick={handleSignInGoogle}>Continue with Google</Button>
+            <a href={`${import.meta.env.BASE_URL}login`}>
+              <Button variant="outline" size="sm">Login with Email</Button>
+            </a>
+          </div>
         )}
       </div>
 

@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Admin from "./pages/Admin";
 import PosterEditor from "./pages/PosterEditor";
+import Login from "./pages/Login";
 import Contact from "./pages/Contact";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
@@ -24,6 +25,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/poster" element={<PosterEditor />} />
+          <Route path="/login" element={<Login />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
