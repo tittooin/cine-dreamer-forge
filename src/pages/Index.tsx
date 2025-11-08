@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Download, Sparkles, Shield, Info } from "lucide-react";
+import { Loader2, Download, Sparkles, Shield } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Link } from "react-router-dom";
 
@@ -16,8 +16,7 @@ const Index = () => {
   const [usage, setUsage] = useState<{ count: number; limit: number; remaining: number } | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [showPayModal, setShowPayModal] = useState(false);
-  const [upiLink, setUpiLink] = useState<string>("");
-  const [qrUrl, setQrUrl] = useState<string>("");
+  const [buyQty, setBuyQty] = useState<number>(1);
   // Poster editing moved to dedicated page (/poster)
 
   useEffect(() => {
@@ -75,17 +74,7 @@ const Index = () => {
     }
     // Credits gating: when 0, show UPI modal instead of error
     const credits = usage ? (typeof (usage as any).credits === "number" ? (usage as any).credits as number : usage.remaining) : 0;
-    if (credits <= 0) {
-      const pa = "more.43@superyes";
-      const pn = "TittoosAI";
-      const am = "2.99";
-      const tn = encodeURIComponent("Image credit");
-      const link = `upi://pay?pa=${pa}&pn=${pn}&am=${am}&cu=INR&tn=${tn}`;
-      setUpiLink(link);
-      setQrUrl(`https://chart.googleapis.com/chart?cht=qr&chs=256x256&chl=${encodeURIComponent(link)}`);
-      setShowPayModal(true);
-      return;
-    }
+    if (credits <= 0) { setShowPayModal(true); return; }
     if (!prompt.trim()) {
       toast.error("Please enter a prompt");
       return;
@@ -130,32 +119,7 @@ const Index = () => {
     }
   };
 
-  // Start Stripe Checkout via Edge Function
-  const handleUpgrade = async () => {
-    if (!userEmail) {
-      toast.error("Please login with Google first");
-      return;
-    }
-    try {
-      const priceId = "price_12345_basic"; // replace with real Stripe Price ID
-      const { data, error } = await supabase.functions.invoke("create-checkout-session", {
-        body: { priceId, mode: "payment" },
-      });
-      if (error) {
-        console.error("Checkout error:", error);
-        toast.error(error.message || "Checkout failed");
-        return;
-      }
-      if (data?.url) {
-        window.location.href = data.url;
-      } else {
-        toast.error("Invalid checkout response");
-      }
-    } catch (e) {
-      console.error(e);
-      toast.error("Failed to start checkout");
-    }
-  };
+  // Stripe Upgrade flow removed; using UPI/Razorpay gating instead
 
   const watermarkSrc = `${import.meta.env.BASE_URL}logo.png`;
 
@@ -226,7 +190,41 @@ const Index = () => {
     window.location.href = `${import.meta.env.BASE_URL}poster`;
   };
 
+  const startCheckout = async (qty: number, amountPaise: number, description: string) => {
+    if (!userEmail) { toast.error("Login first"); return; }
+    try {
+      const { data, error } = await supabase.functions.invoke("create-razorpay-order", { body: { quantity: qty, amountPaise, plan: description } });
+      if (error || (data && (data as any).error)) { toast.error("Order create failed"); return; }
+      const order = (data as any).order; const keyId = (data as any).keyId;
+      await new Promise<void>((resolve) => {
+        const s = document.createElement('script'); s.src = 'https://checkout.razorpay.com/v1/checkout.js'; s.onload = () => resolve(); document.body.appendChild(s);
+      });
+      const options: any = {
+        key: keyId,
+        amount: order.amount,
+        currency: order.currency,
+        name: 'Tittoos AI',
+        description,
+        order_id: order.id,
+        prefill: { email: userEmail ?? '' },
+        theme: { color: '#7c3aed' },
+        handler: async (resp: any) => {
+          try {
+            const { data: v, error: verr } = await supabase.functions.invoke('verify-razorpay-payment', { body: { razorpay_order_id: resp.razorpay_order_id, razorpay_payment_id: resp.razorpay_payment_id, razorpay_signature: resp.razorpay_signature, quantity: qty, userId: (await supabase.auth.getUser()).data.user?.id } });
+            if (verr || (v && (v as any).error)) { toast.error('Verification failed'); return; }
+            toast.success('Credits added');
+            setShowPayModal(false);
+            try { const { data: u } = await supabase.functions.invoke('usage-status'); if (u && typeof u.count==='number') setUsage({ count: u.count, limit: u.limit, remaining: u.remaining }); } catch {}
+          } catch (e) { console.error(e); toast.error('Verification error'); }
+        }
+      };
+      const rz = new (window as any).Razorpay(options);
+      rz.open();
+    } catch (e) { console.error(e); toast.error('Checkout init failed'); }
+  };
+
   return (
+    <>
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 relative overflow-hidden">
       {/* Auth header */}
       <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
@@ -268,36 +266,52 @@ const Index = () => {
       {showPayModal && (
         <div className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm flex items-center justify-center">
           <div className="w-full max-w-md bg-card border border-border rounded-xl p-4 space-y-3">
-            <h3 className="text-lg font-semibold">Buy 1 Credit (₹2.99)</h3>
-            <p className="text-xs text-muted-foreground">Pay via UPI to proceed. Scan the QR or open your UPI app.</p>
-            <div className="flex items-center justify-center">
-              <img src={qrUrl} alt="UPI QR" className="w-48 h-48 border rounded-md" />
+            <h3 className="text-lg font-semibold">Buy Credits</h3>
+            <p className="text-xs text-muted-foreground">Select a pack and pay securely with Razorpay.</p>
+            <div className="grid grid-cols-3 gap-2">
+              <Button variant={buyQty===1?"default":"outline"} onClick={() => setBuyQty(1)}>1 credit (₹2.99)</Button>
+              <Button variant={buyQty===5?"default":"outline"} onClick={() => setBuyQty(5)}>5 credits (₹14.95)</Button>
+              <Button variant={buyQty===10?"default":"outline"} onClick={() => setBuyQty(10)}>10 credits (₹27.90)</Button>
             </div>
-            <div className="text-xs"><b>UPI ID:</b> more.43@superyes</div>
             <div className="grid grid-cols-2 gap-2">
-              <a href={upiLink} className="w-full" onClick={() => toast.info("Opening UPI app...")}> 
-                <Button className="w-full">Open UPI App</Button>
-              </a>
+              <Button className="w-full" onClick={async () => {
+                if (!userEmail) { toast.error("Login first"); return; }
+                try {
+                  const { data, error } = await supabase.functions.invoke("create-razorpay-order", { body: { quantity: buyQty } });
+                  if (error || (data && (data as any).error)) { toast.error("Order create failed"); return; }
+                  const order = (data as any).order; const keyId = (data as any).keyId;
+                  // Load razorpay checkout
+                  await new Promise<void>((resolve) => {
+                    const s = document.createElement('script');
+                    s.src = 'https://checkout.razorpay.com/v1/checkout.js';
+                    s.onload = () => resolve();
+                    document.body.appendChild(s);
+                  });
+                  const options: any = {
+                    key: keyId,
+                    amount: order.amount,
+                    currency: order.currency,
+                    name: 'Tittoos AI',
+                    description: `${buyQty} credit(s)`,
+                    order_id: order.id,
+                    prefill: { email: userEmail ?? '' },
+                    theme: { color: '#7c3aed' },
+                    handler: async (resp: any) => {
+                      try {
+                        const { data: v, error: verr } = await supabase.functions.invoke('verify-razorpay-payment', { body: { razorpay_order_id: resp.razorpay_order_id, razorpay_payment_id: resp.razorpay_payment_id, razorpay_signature: resp.razorpay_signature, quantity: buyQty, userId: (await supabase.auth.getUser()).data.user?.id } });
+                        if (verr || (v && (v as any).error)) { toast.error('Verification failed'); return; }
+                        toast.success('Credits added');
+                        setShowPayModal(false);
+                        try { const { data: u } = await supabase.functions.invoke('usage-status'); if (u && typeof u.count==='number') setUsage({ count: u.count, limit: u.limit, remaining: u.remaining }); } catch {}
+                      } catch (e) { console.error(e); toast.error('Verification error'); }
+                    }
+                  };
+                  const rz = new (window as any).Razorpay(options);
+                  rz.open();
+                } catch (e) { console.error(e); toast.error('Checkout init failed'); }
+              }}>Pay with Razorpay</Button>
               <Button variant="outline" onClick={() => setShowPayModal(false)}>Cancel</Button>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                variant="secondary"
-                onClick={async () => {
-                  if (!userEmail) { toast.error("Login first"); return; }
-                  const { data, error } = await supabase.functions.invoke("confirm-upi-payment", { body: { amount: 2.99 } });
-                  if (error || (data && (data as any).error)) { toast.error("Payment confirmation failed"); return; }
-                  toast.success("Credit added");
-                  setShowPayModal(false);
-                  try {
-                    const { data: u } = await supabase.functions.invoke("usage-status");
-                    if (u && typeof u.count === "number") setUsage({ count: u.count, limit: u.limit, remaining: u.remaining });
-                  } catch {}
-                }}
-              >I've paid</Button>
-              <Button variant="outline" onClick={() => { const a = document.createElement("a"); a.href = upiLink; a.click(); }}>Retry Open</Button>
-            </div>
-            <p className="text-xs text-muted-foreground">Note: Automatic verification will be added later via PSP webhooks. For now, tap “I've paid” after successful transfer.</p>
           </div>
         </div>
       )}
@@ -309,6 +323,30 @@ const Index = () => {
       </div>
 
       <div className="relative z-10 w-full max-w-4xl space-y-8">
+        {/* Pricing Section */}
+        <div className="bg-card border border-border rounded-2xl p-6 space-y-4 shadow-2xl">
+          <h3 className="text-xl font-semibold">Pricing</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="border border-border rounded-xl p-4 space-y-2">
+              <h4 className="text-lg font-medium">Per Image</h4>
+              <div className="text-2xl font-bold">₹2.99</div>
+              <p className="text-xs text-muted-foreground">1 credit for a single image</p>
+              <Button className="w-full" onClick={() => startCheckout(1, 299, '1 credit (₹2.99)')}>Buy 1 credit</Button>
+            </div>
+            <div className="border border-border rounded-xl p-4 space-y-2">
+              <h4 className="text-lg font-medium">Bundle (5)</h4>
+              <div className="text-2xl font-bold">₹11.99</div>
+              <p className="text-xs text-muted-foreground">5 credits — discounted</p>
+              <Button className="w-full" onClick={() => startCheckout(5, 1199, '5 credits (₹11.99)')}>Buy 5 credits</Button>
+            </div>
+            <div className="border border-border rounded-xl p-4 space-y-2">
+              <h4 className="text-lg font-medium">Monthly (50)</h4>
+              <div className="text-2xl font-bold">₹49</div>
+              <p className="text-xs text-muted-foreground">50 credits per month</p>
+              <Button className="w-full" onClick={() => startCheckout(50, 4900, '50 credits monthly (₹49)')}>Buy 50 credits</Button>
+            </div>
+          </div>
+        </div>
         {/* Header */}
         <div className="text-center space-y-4">
           <div className="inline-flex items-center gap-3 px-4 py-2 bg-card border border-border rounded-full">
@@ -394,6 +432,7 @@ const Index = () => {
       <a href={`${import.meta.env.BASE_URL}refunds`} className="mx-2 underline">Refunds</a>
       <a href={`${import.meta.env.BASE_URL}shipping`} className="mx-2 underline">Shipping</a>
     </div>
+    </>
   );
 };
 
