@@ -16,6 +16,7 @@ const Index = () => {
   const [usage, setUsage] = useState<{ count: number; limit: number; remaining: number } | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [buyQty, setBuyQty] = useState<number>(1);
+  const [isMultiAccount, setIsMultiAccount] = useState(false);
   // Poster editing moved to dedicated page (/poster)
 
   useEffect(() => {
@@ -29,6 +30,12 @@ const Index = () => {
           if (u && typeof u.count === "number") setUsage({ count: u.count, limit: u.limit, remaining: u.remaining });
         } catch (e) {
           console.error("usage-status error", e);
+        }
+        try {
+          const { data: s } = await supabase.functions.invoke("multi-account-status");
+          if (s && typeof s.is_suspect === "boolean") setIsMultiAccount(!!s.is_suspect);
+        } catch (e) {
+          console.error("multi-account-status error", e);
         }
       }
     };
@@ -199,7 +206,7 @@ const Index = () => {
         {userEmail ? (
           <>
             <span className="text-sm text-muted-foreground">Logged in as {userEmail}</span>
-            {usage && (() => {
+            {!isMultiAccount && usage && (() => {
               const credits = typeof (usage as any).credits === "number" ? (usage as any).credits as number : usage.remaining;
               const color = credits <= 5 ? "bg-red-500/15 text-red-600 border-red-500/30" : credits <= 10 ? "bg-orange-500/15 text-orange-600 border-orange-500/30" : "bg-green-500/15 text-green-700 border-green-500/30";
               return (
@@ -245,7 +252,29 @@ const Index = () => {
       </div>
 
       <div className="relative z-10 w-full max-w-4xl space-y-8">
-        {/* Pricing removed: payments disabled */}
+        {isMultiAccount && (
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-4 shadow-2xl">
+            <h3 className="text-xl font-semibold">Pricing</h3>
+            <p className="text-xs text-muted-foreground">Multiple accounts detected from the same network. Pricing applies as below.</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="border border-border rounded-xl p-4 space-y-2">
+                <h4 className="text-lg font-medium">Per Image</h4>
+                <div className="text-2xl font-bold">₹2.99</div>
+                <p className="text-xs text-muted-foreground">1 credit for a single image</p>
+              </div>
+              <div className="border border-border rounded-xl p-4 space-y-2">
+                <h4 className="text-lg font-medium">Bundle (5)</h4>
+                <div className="text-2xl font-bold">₹11.99</div>
+                <p className="text-xs text-muted-foreground">5 credits — discounted</p>
+              </div>
+              <div className="border border-border rounded-xl p-4 space-y-2">
+                <h4 className="text-lg font-medium">Monthly (50)</h4>
+                <div className="text-2xl font-bold">₹49</div>
+                <p className="text-xs text-muted-foreground">50 credits per month</p>
+              </div>
+            </div>
+          </div>
+        )}
         {/* Header */}
         <div className="text-center space-y-4">
           <div className="inline-flex items-center gap-3 px-4 py-2 bg-card border border-border rounded-full">
