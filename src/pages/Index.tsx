@@ -16,7 +16,6 @@ const Index = () => {
   const [usage, setUsage] = useState<{ count: number; limit: number; remaining: number } | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [buyQty, setBuyQty] = useState<number>(1);
-  const paymentPageUrl = "https://rzp.io/rzp/XI1k79y";
   // Poster editing moved to dedicated page (/poster)
 
   useEffect(() => {
@@ -72,9 +71,9 @@ const Index = () => {
       toast.error("Please login with Google first");
       return;
     }
-    // Credits gating: when 0, show UPI modal instead of error
+    // Credits gating: when 0, block generation (no payments enabled)
     const credits = usage ? (typeof (usage as any).credits === "number" ? (usage as any).credits as number : usage.remaining) : 0;
-    if (credits <= 0) { window.open(paymentPageUrl, "_blank"); toast.info("Opening payment page..."); return; }
+    if (credits <= 0) { toast.error("No credits left. Please contact support."); return; }
     if (!prompt.trim()) {
       toast.error("Please enter a prompt");
       return;
@@ -190,7 +189,7 @@ const Index = () => {
     window.location.href = `${import.meta.env.BASE_URL}poster`;
   };
 
-  const openPaymentPage = () => { window.open(paymentPageUrl, "_blank"); toast.info("Opening payment page..."); };
+  // Payments disabled: Razorpay integration removed
 
   return (
     <>
@@ -246,30 +245,7 @@ const Index = () => {
       </div>
 
       <div className="relative z-10 w-full max-w-4xl space-y-8">
-        {/* Pricing Section */}
-        <div className="bg-card border border-border rounded-2xl p-6 space-y-4 shadow-2xl">
-          <h3 className="text-xl font-semibold">Pricing</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="border border-border rounded-xl p-4 space-y-2">
-              <h4 className="text-lg font-medium">Per Image</h4>
-              <div className="text-2xl font-bold">₹2.99</div>
-              <p className="text-xs text-muted-foreground">1 credit for a single image</p>
-              <Button className="w-full" onClick={openPaymentPage}>Buy 1 credit</Button>
-            </div>
-            <div className="border border-border rounded-xl p-4 space-y-2">
-              <h4 className="text-lg font-medium">Bundle (5)</h4>
-              <div className="text-2xl font-bold">₹11.99</div>
-              <p className="text-xs text-muted-foreground">5 credits — discounted</p>
-              <Button className="w-full" onClick={openPaymentPage}>Buy 5 credits</Button>
-            </div>
-            <div className="border border-border rounded-xl p-4 space-y-2">
-              <h4 className="text-lg font-medium">Monthly (50)</h4>
-              <div className="text-2xl font-bold">₹49</div>
-              <p className="text-xs text-muted-foreground">50 credits per month</p>
-              <Button className="w-full" onClick={openPaymentPage}>Buy 50 credits</Button>
-            </div>
-          </div>
-        </div>
+        {/* Pricing removed: payments disabled */}
         {/* Header */}
         <div className="text-center space-y-4">
           <div className="inline-flex items-center gap-3 px-4 py-2 bg-card border border-border rounded-full">
@@ -353,7 +329,7 @@ const Index = () => {
       <a href={`${import.meta.env.BASE_URL}privacy`} className="mx-2 underline">Privacy</a>
       <a href={`${import.meta.env.BASE_URL}terms`} className="mx-2 underline">Terms</a>
       <a href={`${import.meta.env.BASE_URL}refunds`} className="mx-2 underline">Refunds</a>
-      <a href={`${import.meta.env.BASE_URL}shipping`} className="mx-2 underline">Shipping</a>
+      {/* Shipping page removed */}
     </div>
     </>
   );
