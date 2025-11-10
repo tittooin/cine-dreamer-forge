@@ -79,7 +79,7 @@ serve(async (req) => {
       .toISOString()
       .slice(0, 10);
 
-    // Credit-based access: first 5 free, then consume paid credits (₹5 per image)
+    // Credit-based access: first 2 free, then consume paid credits (₹5 per image)
     let consumeFrom: "free" | "paid" | null = null;
     if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY && userId) {
       try {
@@ -94,8 +94,8 @@ serve(async (req) => {
         if (!credits) {
           await supabase
             .from("image_credits")
-            .insert({ user_id: userId, free_remaining: 5, paid_credits: 0 });
-          credits = { free_remaining: 5, paid_credits: 0 } as any;
+            .insert({ user_id: userId, free_remaining: 2, paid_credits: 0 });
+          credits = { free_remaining: 2, paid_credits: 0 } as any;
         }
         if (typeof credits.free_remaining === "number" && credits.free_remaining > 0) {
           consumeFrom = "free";
@@ -103,7 +103,7 @@ serve(async (req) => {
           consumeFrom = "paid";
         } else {
           return new Response(
-            JSON.stringify({ error: "No credits remaining", status: 402, detail: "You have used 5 free images. Purchase credits to continue (₹5 per image)." }),
+            JSON.stringify({ error: "No credits remaining", status: 402, detail: "You have used 2 free images. Purchase credits to continue (₹5 per image)." }),
             { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }

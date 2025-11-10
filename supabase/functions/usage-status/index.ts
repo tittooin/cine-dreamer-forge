@@ -46,8 +46,8 @@ serve(async (req) => {
       .eq("user_id", user.id)
       .maybeSingle();
     if (!credits) {
-      await adminClient.from("image_credits").insert({ user_id: user.id, free_remaining: 5, paid_credits: 0 });
-      credits = { free_remaining: 5, paid_credits: 0 } as any;
+      await adminClient.from("image_credits").insert({ user_id: user.id, free_remaining: 2, paid_credits: 0 });
+      credits = { free_remaining: 2, paid_credits: 0 } as any;
     }
     const remaining = (Number(credits.free_remaining) || 0) + (Number(credits.paid_credits) || 0);
     return new Response(

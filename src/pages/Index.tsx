@@ -17,6 +17,7 @@ const Index = () => {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [buyQty, setBuyQty] = useState<number>(1);
   const [isMultiAccount, setIsMultiAccount] = useState(false);
+  const GPAY_VPA = import.meta.env.VITE_GPAY_VPA || "";
   // Poster editing moved to dedicated page (/poster)
 
   useEffect(() => {
@@ -197,6 +198,25 @@ const Index = () => {
   };
 
   // Payments disabled: Razorpay integration removed
+  const startGPay = (amount: number, note: string) => {
+    if (!userEmail) { toast.error("Please login to purchase credits"); return; }
+    if (!GPAY_VPA) { toast.error("Payment not configured. Set VITE_GPAY_VPA in environment."); return; }
+    const params = new URLSearchParams({
+      pa: GPAY_VPA,
+      pn: "TittoosAI",
+      am: amount.toFixed(2),
+      cu: "INR",
+      tn: `${note} • ${userEmail}`,
+    });
+    const upiUri = `upi://pay?${params.toString()}`;
+    try {
+      window.location.href = upiUri;
+      toast.info("Opening Google Pay / UPI app...");
+    } catch (e) {
+      console.error("GPay intent failed", e);
+      toast.error("Unable to open Google Pay. Try on mobile device.");
+    }
+  };
 
   return (
     <>
@@ -252,25 +272,28 @@ const Index = () => {
       </div>
 
       <div className="relative z-10 w-full max-w-4xl space-y-8">
-        {isMultiAccount && (
+        {(
           <div className="bg-card border border-border rounded-2xl p-6 space-y-4 shadow-2xl">
             <h3 className="text-xl font-semibold">Pricing</h3>
-            <p className="text-xs text-muted-foreground">Multiple accounts detected from the same network. Pricing applies as below.</p>
+            <p className="text-xs text-muted-foreground">Choose a bundle and pay via Google Pay (UPI).</p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="border border-border rounded-xl p-4 space-y-2">
                 <h4 className="text-lg font-medium">Per Image</h4>
                 <div className="text-2xl font-bold">₹2.99</div>
                 <p className="text-xs text-muted-foreground">1 credit for a single image</p>
+                <Button className="w-full" onClick={() => startGPay(2.99, "Per Image (1 credit)")}>Buy</Button>
               </div>
               <div className="border border-border rounded-xl p-4 space-y-2">
                 <h4 className="text-lg font-medium">Bundle (5)</h4>
                 <div className="text-2xl font-bold">₹11.99</div>
                 <p className="text-xs text-muted-foreground">5 credits — discounted</p>
+                <Button className="w-full" onClick={() => startGPay(11.99, "Bundle (5 credits)")}>Buy</Button>
               </div>
               <div className="border border-border rounded-xl p-4 space-y-2">
                 <h4 className="text-lg font-medium">Monthly (50)</h4>
                 <div className="text-2xl font-bold">₹49</div>
                 <p className="text-xs text-muted-foreground">50 credits per month</p>
+                <Button className="w-full" onClick={() => startGPay(49.0, "Monthly (50 credits)")}>Buy</Button>
               </div>
             </div>
           </div>
