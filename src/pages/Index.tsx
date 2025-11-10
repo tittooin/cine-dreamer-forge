@@ -18,6 +18,12 @@ const Index = () => {
   const [buyQty, setBuyQty] = useState<number>(1);
   const [isMultiAccount, setIsMultiAccount] = useState(false);
   const GPAY_VPA = import.meta.env.VITE_GPAY_VPA || "";
+  const GPAY_NAME = import.meta.env.VITE_GPAY_NAME || "Tittoos Store";
+  const GPAY_AMOUNTS = (import.meta.env.VITE_GPAY_AMOUNT || "2.99,11.99,49")
+    .split(",")
+    .map((s) => Number(String(s).trim()))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  const [A1 = 2.99, A2 = 11.99, A3 = 49] = GPAY_AMOUNTS;
   // Poster editing moved to dedicated page (/poster)
 
   useEffect(() => {
@@ -203,7 +209,7 @@ const Index = () => {
     if (!GPAY_VPA) { toast.error("Payment not configured. Set VITE_GPAY_VPA in environment."); return; }
     const params = new URLSearchParams({
       pa: GPAY_VPA,
-      pn: "TittoosAI",
+      pn: GPAY_NAME,
       am: amount.toFixed(2),
       cu: "INR",
       tn: `${note} • ${userEmail}`,
@@ -279,21 +285,21 @@ const Index = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="border border-border rounded-xl p-4 space-y-2">
                 <h4 className="text-lg font-medium">Per Image</h4>
-                <div className="text-2xl font-bold">₹2.99</div>
+                <div className="text-2xl font-bold">₹{A1}</div>
                 <p className="text-xs text-muted-foreground">1 credit for a single image</p>
-                <Button className="w-full" onClick={() => startGPay(2.99, "Per Image (1 credit)")}>Buy</Button>
+                <Button className="w-full" onClick={() => startGPay(A1, "Per Image (1 credit)")}>Buy</Button>
               </div>
               <div className="border border-border rounded-xl p-4 space-y-2">
                 <h4 className="text-lg font-medium">Bundle (5)</h4>
-                <div className="text-2xl font-bold">₹11.99</div>
+                <div className="text-2xl font-bold">₹{A2}</div>
                 <p className="text-xs text-muted-foreground">5 credits — discounted</p>
-                <Button className="w-full" onClick={() => startGPay(11.99, "Bundle (5 credits)")}>Buy</Button>
+                <Button className="w-full" onClick={() => startGPay(A2, "Bundle (5 credits)")}>Buy</Button>
               </div>
               <div className="border border-border rounded-xl p-4 space-y-2">
                 <h4 className="text-lg font-medium">Monthly (50)</h4>
-                <div className="text-2xl font-bold">₹49</div>
+                <div className="text-2xl font-bold">₹{A3}</div>
                 <p className="text-xs text-muted-foreground">50 credits per month</p>
-                <Button className="w-full" onClick={() => startGPay(49.0, "Monthly (50 credits)")}>Buy</Button>
+                <Button className="w-full" onClick={() => startGPay(A3, "Monthly (50 credits)")}>Buy</Button>
               </div>
             </div>
           </div>
