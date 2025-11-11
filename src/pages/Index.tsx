@@ -255,9 +255,18 @@ const Index = () => {
     }
   };
 
+  const creditsForAmount = (amt: number) => {
+    // Map configured pricing amounts to credits
+    if (Math.abs(amt - A1) < 0.01) return 1;
+    if (Math.abs(amt - A2) < 0.01) return 5;
+    if (Math.abs(amt - A3) < 0.01) return 50;
+    // Fallback: 1 credit if unknown amount
+    return 1;
+  };
+
   const startGPay = async (amount: number, note: string) => {
     if (!userEmail) { toast.error("Please login to purchase credits"); return; }
-    const res = await createCashfreeOrder(amount, 1, note);
+    const res = await createCashfreeOrder(amount, creditsForAmount(amount), note);
     if (res && (res as any).link) {
       const link = (res as any).link as string;
       try { window.open(link, "_blank"); } catch { window.location.href = link; }
@@ -293,7 +302,7 @@ const Index = () => {
     // Legacy UPI QR fallback remains for users preferring direct UPI
     if (!userEmail) { toast.error("Please login to purchase credits"); return; }
     const { data, error } = await supabase.functions.invoke("create-upi-intent", {
-      body: { amount, credits: 1, note },
+      body: { amount, credits: creditsForAmount(amount), note },
     });
     if (error || !data?.upiUri || !data?.payment_id) { toast.error("UPI intent failed"); return; }
     setUpiIntent(data.upiUri);
