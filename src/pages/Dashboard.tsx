@@ -46,6 +46,25 @@ const Dashboard = () => {
   const confirmed = items.filter((i) => (i.status || "").toLowerCase() === "confirmed");
   const purchasedTotal = confirmed.reduce((sum, i) => sum + (Number(i.credits) || 0), 0);
 
+  const refreshPayment = async (p: PaymentItem) => {
+    try {
+      const { data, error } = await supabase.functions.invoke("reconcile-cashfree-order", { body: { payment_id: p.payment_id, order_id: p.order_id } });
+      if (error || data?.error) {
+        toast.error(data?.error || error?.message || "Refresh failed");
+      } else {
+        toast.success("Payment reconciled");
+        // Reload usage and payments
+        const { data: u } = await supabase.functions.invoke("usage-status");
+        if (u && typeof u.remaining === "number") setUsage({ free_remaining: u.free_remaining ?? 0, paid_credits: u.paid_credits ?? 0, remaining: u.remaining ?? 0 });
+        const { data: p2 } = await supabase.functions.invoke("list-my-payments", { body: { page: 0, pageSize: 50 } });
+        if (p2 && Array.isArray(p2.items)) setItems(p2.items);
+      }
+    } catch (e) {
+      console.error("reconcile", e);
+      toast.error("Refresh failed");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background p-4">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -90,6 +109,7 @@ const Dashboard = () => {
                   <th className="text-left py-2">Amount (₹)</th>
                   <th className="text-left py-2">Credits</th>
                   <th className="text-left py-2">Status</th>
+                  <th className="text-left py-2">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -99,6 +119,13 @@ const Dashboard = () => {
                     <td className="py-2">{Number(p.amount).toFixed(2)}</td>
                     <td className="py-2">{p.credits}</td>
                     <td className="py-2">{p.status}</td>
+                    <td className="py-2">
+                      {(p.status || '').toLowerCase() === 'pending' ? (
+                        <Button size="sm" variant="outline" onClick={() => refreshPayment(p)}>Refresh</Button>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
                 {items.length === 0 && (
