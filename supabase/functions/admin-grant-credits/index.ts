@@ -9,8 +9,8 @@ const corsHeaders = {
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    // Preflight response
-    return new Response("ok", { status: 204, headers: corsHeaders });
+    // Preflight response (200 OK to match conventions)
+    return new Response(null, { status: 200, headers: corsHeaders });
   }
 
   try {
