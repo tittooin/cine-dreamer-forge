@@ -175,7 +175,16 @@ const Admin = () => {
                 const { data, error } = await supabase.functions.invoke("admin-grant-credits", {
                   body: { userId: uid, credits: c, amount: amt },
                 });
-                if (error || data?.error) { toast.error(data?.error || "Grant failed"); }
+                // Surface detailed error info from function
+                if (error || data?.error) {
+                  const msg = [
+                    data?.error,
+                    data?.details,
+                    (error as any)?.message,
+                  ].filter(Boolean).join(": ");
+                  console.error("admin-grant-credits invoke error", { error, data });
+                  toast.error(msg || "Grant failed");
+                }
                 else { toast.success(`Granted ${c} credits to ${uid}`); }
               } catch (e) {
                 console.error("admin-grant-credits error", e);

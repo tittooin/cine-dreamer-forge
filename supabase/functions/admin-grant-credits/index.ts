@@ -73,7 +73,7 @@ serve(async (req) => {
         .update({ paid_credits: newPaid, updated_at: new Date().toISOString() })
         .eq('user_id', userId);
       if (updIcErr) {
-        return new Response(JSON.stringify({ error: 'Credits update failed' }), {
+        return new Response(JSON.stringify({ error: 'Credits update failed', details: updIcErr.message }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -83,7 +83,7 @@ serve(async (req) => {
         .from('image_credits')
         .insert({ user_id: userId, free_remaining: 2, paid_credits: Number(credits), updated_at: new Date().toISOString() });
       if (insIcErr) {
-        return new Response(JSON.stringify({ error: 'Credits insert failed' }), {
+        return new Response(JSON.stringify({ error: 'Credits insert failed', details: insIcErr.message }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -115,7 +115,7 @@ serve(async (req) => {
     });
   } catch (e) {
     console.error("admin-grant-credits error:", e);
-    return new Response(JSON.stringify({ error: "Server error" }), {
+    return new Response(JSON.stringify({ error: "Server error", details: e instanceof Error ? e.message : String(e) }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
