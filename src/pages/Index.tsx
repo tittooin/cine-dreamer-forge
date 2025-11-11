@@ -379,7 +379,6 @@ const Index = () => {
                 <p className="text-xs text-muted-foreground">1 credit for a single image</p>
                 <div className="flex gap-2">
                   <Button className="w-full" onClick={() => startGPay(A1, "Per Image (1 credit)")}>Buy</Button>
-                  <Button className="w-full" variant="outline" onClick={() => showGPayQR(A1, "Per Image (1 credit)")}>Show QR</Button>
                 </div>
               </div>
               <div className="border border-border rounded-xl p-4 space-y-2">
@@ -388,7 +387,6 @@ const Index = () => {
                 <p className="text-xs text-muted-foreground">5 credits — discounted</p>
                 <div className="flex gap-2">
                   <Button className="w-full" onClick={() => startGPay(A2, "Bundle (5 credits)")}>Buy</Button>
-                  <Button className="w-full" variant="outline" onClick={() => showGPayQR(A2, "Bundle (5 credits)")}>Show QR</Button>
                 </div>
               </div>
               <div className="border border-border rounded-xl p-4 space-y-2">
@@ -397,7 +395,6 @@ const Index = () => {
                 <p className="text-xs text-muted-foreground">50 credits per month</p>
                 <div className="flex gap-2">
                   <Button className="w-full" onClick={() => startGPay(A3, "Monthly (50 credits)")}>Buy</Button>
-                  <Button className="w-full" variant="outline" onClick={() => showGPayQR(A3, "Monthly (50 credits)")}>Show QR</Button>
                 </div>
               </div>
             </div>
