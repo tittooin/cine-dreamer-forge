@@ -16,6 +16,11 @@ const Admin = () => {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
   const pageSize = 10;
+  // Manual credits grant
+  const [grantUserId, setGrantUserId] = useState("");
+  const [grantCredits, setGrantCredits] = useState("1");
+  const [grantAmount, setGrantAmount] = useState("0");
+  const [grantBusy, setGrantBusy] = useState(false);
   // Registered users state
   const [regQuery, setRegQuery] = useState("");
   const [regPage, setRegPage] = useState(0);
@@ -136,7 +141,50 @@ const Admin = () => {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
       <div className="w-full max-w-xl bg-card border border-border rounded-xl p-6 space-y-4">
-        <h2 className="text-xl font-semibold">Admin: Per-user Daily Limit</h2>
+        <h2 className="text-xl font-semibold">Admin: Credits & Limits</h2>
+        {/* Manual Credits Grant */}
+        <div className="border rounded-xl p-3 bg-muted/20 space-y-2">
+          <h3 className="text-sm font-medium">Grant Purchased Credits (Manual)</h3>
+          <p className="text-xs text-muted-foreground">Use when auto credit update fails. Adds to paid credits and logs an audit payment.</p>
+          <div className="space-y-2">
+            <label className="text-sm">User ID</label>
+            <Input placeholder="supabase auth user id" value={grantUserId} onChange={(e) => setGrantUserId(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-2">
+              <label className="text-sm">Credits</label>
+              <Input type="number" placeholder="e.g. 1, 5, 50" value={grantCredits} onChange={(e) => setGrantCredits(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm">Amount (₹, optional)</label>
+              <Input type="number" placeholder="e.g. 49" value={grantAmount} onChange={(e) => setGrantAmount(e.target.value)} />
+            </div>
+          </div>
+          <Button
+            className="w-full"
+            disabled={grantBusy}
+            onClick={async () => {
+              if (!isAdminEmail(userEmail)) { toast.error("Admin only"); return; }
+              const uid = grantUserId.trim();
+              const c = Number(grantCredits);
+              const amt = Number(grantAmount) || 0;
+              if (!uid) { toast.error("Enter user id"); return; }
+              if (!Number.isFinite(c) || c <= 0) { toast.error("Enter positive credits"); return; }
+              setGrantBusy(true);
+              try {
+                const { data, error } = await supabase.functions.invoke("admin-grant-credits", {
+                  body: { userId: uid, credits: c, amount: amt },
+                });
+                if (error || data?.error) { toast.error(data?.error || "Grant failed"); }
+                else { toast.success(`Granted ${c} credits to ${uid}`); }
+              } catch (e) {
+                console.error("admin-grant-credits error", e);
+                toast.error("Grant failed");
+              } finally { setGrantBusy(false); }
+            }}
+          >{grantBusy ? "Granting…" : "Grant Credits"}</Button>
+        </div>
+        <h2 className="text-xl font-semibold">Per-user Daily Limit</h2>
         <div className="border rounded-xl p-3 bg-muted/20">
           <h3 className="text-sm font-medium">Global Defaults</h3>
           <div className="grid grid-cols-2 gap-2 mt-2">
