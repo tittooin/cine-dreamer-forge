@@ -328,6 +328,9 @@ const Index = () => {
                 </Tooltip>
               );
             })()}
+            <Link to="/dashboard" className="inline-flex">
+              <Button variant="outline" size="sm">Credits</Button>
+            </Link>
             {ADMIN_EMAIL && userEmail.toLowerCase() === String(ADMIN_EMAIL).toLowerCase() && (
               <Link to="/admin-quiet-6b27c9" className="inline-flex">
                 <Button variant="outline" size="sm">
