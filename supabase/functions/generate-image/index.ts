@@ -175,28 +175,34 @@ serve(async (req) => {
         if (consumeFrom === "free") {
           await supabase
             .from("image_credits")
-            .update({ free_remaining: (await (async () => {
-              const { data } = await supabase
-                .from("image_credits")
-                .select("free_remaining")
-                .eq("user_id", userId)
-                .maybeSingle();
-              const fr = (data?.free_remaining ?? 1) as number;
-              return Math.max(fr - 1, 0);
-            })(), updated_at: new Date().toISOString() })
+            .update({
+              free_remaining: await (async () => {
+                const { data } = await supabase
+                  .from("image_credits")
+                  .select("free_remaining")
+                  .eq("user_id", userId)
+                  .maybeSingle();
+                const fr = (data?.free_remaining ?? 1) as number;
+                return Math.max(fr - 1, 0);
+              })(),
+              updated_at: new Date().toISOString(),
+            })
             .eq("user_id", userId);
         } else {
           await supabase
             .from("image_credits")
-            .update({ paid_credits: (await (async () => {
-              const { data } = await supabase
-                .from("image_credits")
-                .select("paid_credits")
-                .eq("user_id", userId)
-                .maybeSingle();
-              const pc = (data?.paid_credits ?? 1) as number;
-              return Math.max(pc - 1, 0);
-            })(), updated_at: new Date().toISOString() })
+            .update({
+              paid_credits: await (async () => {
+                const { data } = await supabase
+                  .from("image_credits")
+                  .select("paid_credits")
+                  .eq("user_id", userId)
+                  .maybeSingle();
+                const pc = (data?.paid_credits ?? 1) as number;
+                return Math.max(pc - 1, 0);
+              })(),
+              updated_at: new Date().toISOString(),
+            })
             .eq("user_id", userId);
         }
       } catch (e) {

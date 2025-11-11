@@ -19,5 +19,3 @@ update public.image_credits
 set free_remaining = 3,
     updated_at = now()
 where coalesce(free_remaining, 0) <> 3;
-
-comment on migration is 'Set all users daily_limit to 3 and free credits to 3; update app_settings daily_default to 3.';

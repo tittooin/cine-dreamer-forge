@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Download, Sparkles, Shield } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Link } from "react-router-dom";
+import QRCode from "react-qr-code";
 
 const Index = () => {
   const [prompt, setPrompt] = useState("");
@@ -24,6 +25,10 @@ const Index = () => {
     .map((s) => Number(String(s).trim()))
     .filter((n) => Number.isFinite(n) && n > 0);
   const [A1 = 2.99, A2 = 11.99, A3 = 49] = GPAY_AMOUNTS;
+  const [upiIntent, setUpiIntent] = useState<string | null>(null);
+  const [showUpiHelp, setShowUpiHelp] = useState(false);
+  const [currentPaymentId, setCurrentPaymentId] = useState<string | null>(null);
+  const [utrInput, setUtrInput] = useState("");
   // Poster editing moved to dedicated page (/poster)
 
   useEffect(() => {
@@ -203,25 +208,98 @@ const Index = () => {
     window.location.href = `${import.meta.env.BASE_URL}poster`;
   };
 
-  // Payments disabled: Razorpay integration removed
-  const startGPay = (amount: number, note: string) => {
-    if (!userEmail) { toast.error("Please login to purchase credits"); return; }
-    if (!GPAY_VPA) { toast.error("Payment not configured. Set VITE_GPAY_VPA in environment."); return; }
-    const params = new URLSearchParams({
-      pa: GPAY_VPA,
-      pn: GPAY_NAME,
-      am: amount.toFixed(2),
-      cu: "INR",
-      tn: `${note} • ${userEmail}`,
-    });
-    const upiUri = `upi://pay?${params.toString()}`;
+  // Backend-generated payment via Cashfree (returns hosted payment link)
+  const createCashfreeOrder = async (amount: number, credits: number, note: string) => {
     try {
-      window.location.href = upiUri;
-      toast.info("Opening Google Pay / UPI app...");
-    } catch (e) {
-      console.error("GPay intent failed", e);
-      toast.error("Unable to open Google Pay. Try on mobile device.");
+      const { data, error } = await supabase.functions.invoke("create-cashfree-order", {
+        body: { amount, credits, note },
+      });
+      if (error) {
+        console.error("create-cashfree-order failed:", error);
+        const detail = (error as any)?.context || (error as any)?.message || "Payment setup failed. Try again.";
+        toast.error(String(detail));
+        return null;
+      }
+      if (!data || !data.payment_id) {
+        toast.error("Payment setup failed");
+        return null;
+      }
+      setCurrentPaymentId(data.payment_id);
+      // Attempt to extract a hosted checkout link from multiple possible fields
+      const candidates = [
+        (data.payment_link as string),
+        (data.provider_link as string),
+        (data.payments?.url as string),
+        (data.payment_links?.link_url as string),
+        (data.session?.url as string),
+        (data.payment_session?.url as string),
+        (data.url as string),
+      ];
+      const link = candidates.find((v) => typeof v === "string" && v.length > 0) || "";
+      if (link) {
+        console.log("Cashfree hosted link:", link);
+        return { link } as any;
+      } else {
+        console.warn("Cashfree order created but no hosted link found", data);
+        const sessionId: string | undefined = (data.payment_session_id as string) || undefined;
+        const env: string = (data.env as string) || "sandbox";
+        if (sessionId) {
+          return { sessionId, env } as any;
+        }
+      }
+      return null;
+    } catch (e: any) {
+      console.error("create-cashfree-order exception:", e);
+      toast.error(e?.message || "Payment setup failed. Try again.");
+      return null;
     }
+  };
+
+  const startGPay = async (amount: number, note: string) => {
+    if (!userEmail) { toast.error("Please login to purchase credits"); return; }
+    const res = await createCashfreeOrder(amount, 1, note);
+    if (res && (res as any).link) {
+      const link = (res as any).link as string;
+      try { window.open(link, "_blank"); } catch { window.location.href = link; }
+      toast.success("Redirecting to payment gateway");
+      return;
+    }
+    if (res && (res as any).sessionId) {
+      const { sessionId, env } = res as any;
+      try {
+        // Load Cashfree JS SDK dynamically and open checkout in new tab
+        await new Promise<void>((resolve, reject) => {
+          if ((window as any).Cashfree) { resolve(); return; }
+          const s = document.createElement("script");
+          s.src = "https://sdk.cashfree.com/js/v3/cashfree.js";
+          s.async = true;
+          s.onload = () => resolve();
+          s.onerror = () => reject(new Error("Failed to load Cashfree SDK"));
+          document.head.appendChild(s);
+        });
+        const cashfree = (window as any).Cashfree({ mode: env === "production" ? "production" : "sandbox" });
+        await cashfree.checkout({ paymentSessionId: sessionId, redirectTarget: "_blank" });
+        toast.success("Opening Cashfree checkout");
+        return;
+      } catch (e) {
+        console.error("Cashfree SDK checkout failed:", e);
+      }
+    }
+    toast.error("Unable to start payment");
+    console.error("No payment link or session id available from createCashfreeOrder response.");
+  };
+
+  const showGPayQR = async (amount: number, note: string) => {
+    // Legacy UPI QR fallback remains for users preferring direct UPI
+    if (!userEmail) { toast.error("Please login to purchase credits"); return; }
+    const { data, error } = await supabase.functions.invoke("create-upi-intent", {
+      body: { amount, credits: 1, note },
+    });
+    if (error || !data?.upiUri || !data?.payment_id) { toast.error("UPI intent failed"); return; }
+    setUpiIntent(data.upiUri);
+    setCurrentPaymentId(data.payment_id);
+    setShowUpiHelp(true);
+    try { await navigator.clipboard.writeText(data.upiUri); toast.success("UPI link copied"); } catch {}
   };
 
   return (
@@ -287,21 +365,95 @@ const Index = () => {
                 <h4 className="text-lg font-medium">Per Image</h4>
                 <div className="text-2xl font-bold">₹{A1}</div>
                 <p className="text-xs text-muted-foreground">1 credit for a single image</p>
-                <Button className="w-full" onClick={() => startGPay(A1, "Per Image (1 credit)")}>Buy</Button>
+                <div className="flex gap-2">
+                  <Button className="w-full" onClick={() => startGPay(A1, "Per Image (1 credit)")}>Buy</Button>
+                  <Button className="w-full" variant="outline" onClick={() => showGPayQR(A1, "Per Image (1 credit)")}>Show QR</Button>
+                </div>
               </div>
               <div className="border border-border rounded-xl p-4 space-y-2">
                 <h4 className="text-lg font-medium">Bundle (5)</h4>
                 <div className="text-2xl font-bold">₹{A2}</div>
                 <p className="text-xs text-muted-foreground">5 credits — discounted</p>
-                <Button className="w-full" onClick={() => startGPay(A2, "Bundle (5 credits)")}>Buy</Button>
+                <div className="flex gap-2">
+                  <Button className="w-full" onClick={() => startGPay(A2, "Bundle (5 credits)")}>Buy</Button>
+                  <Button className="w-full" variant="outline" onClick={() => showGPayQR(A2, "Bundle (5 credits)")}>Show QR</Button>
+                </div>
               </div>
               <div className="border border-border rounded-xl p-4 space-y-2">
                 <h4 className="text-lg font-medium">Monthly (50)</h4>
                 <div className="text-2xl font-bold">₹{A3}</div>
                 <p className="text-xs text-muted-foreground">50 credits per month</p>
-                <Button className="w-full" onClick={() => startGPay(A3, "Monthly (50 credits)")}>Buy</Button>
+                <div className="flex gap-2">
+                  <Button className="w-full" onClick={() => startGPay(A3, "Monthly (50 credits)")}>Buy</Button>
+                  <Button className="w-full" variant="outline" onClick={() => showGPayQR(A3, "Monthly (50 credits)")}>Show QR</Button>
+                </div>
               </div>
             </div>
+            {showUpiHelp && upiIntent && (
+              <div className="mt-4 p-3 border rounded-lg bg-muted/20">
+                <div className="text-xs text-muted-foreground mb-2">Payment didn’t open. Scan the QR with Google Pay on mobile or copy the UPI link.</div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
+                  <div className="flex justify-center md:justify-start">
+                    <div className="bg-white p-3 rounded-md border">
+                      <QRCode value={upiIntent} size={140} />
+                    </div>
+                  </div>
+                  <div className="md:col-span-2 flex items-center gap-2">
+                    <Input readOnly value={upiIntent} className="text-[11px]" aria-label="UPI payment link" />
+                    <Button
+                      variant="outline"
+                      onClick={async () => {
+                        try { await navigator.clipboard.writeText(upiIntent); toast.success("UPI link copied"); }
+                        catch { toast.error("Copy failed. Select and copy manually."); }
+                      }}
+                    >Copy</Button>
+                    <a href={upiIntent} className="inline-flex">
+                      <Button variant="default">Open in UPI app</Button>
+                    </a>
+                  </div>
+                </div>
+                <div className="mt-2 text-[11px] text-muted-foreground">Payee: {GPAY_NAME} • VPA: {GPAY_VPA}</div>
+                {currentPaymentId && (
+                  <div className="mt-3 flex items-center gap-2">
+                    <Input
+                      placeholder="Enter UPI Transaction ID (UTR)"
+                      value={utrInput}
+                      onChange={(e) => setUtrInput(e.target.value)}
+                      className="text-[12px]"
+                      aria-label="UPI Transaction ID"
+                    />
+                    <Button
+                      onClick={async () => {
+                        const utr = utrInput.trim();
+                        if (utr.length < 6) { toast.error("Please enter valid UTR"); return; }
+                        if (!currentPaymentId) { toast.error("Payment not initialized"); return; }
+                        try {
+                          const { data, error } = await supabase.functions.invoke("confirm-upi-payment", {
+                            body: { payment_id: currentPaymentId, utr },
+                          });
+                          if (error) { throw error; }
+                          if (data && data.ok) {
+                            toast.success("Payment confirmed. Credits added.");
+                            setShowUpiHelp(false);
+                            setUtrInput("");
+                            setCurrentPaymentId(null);
+                            try {
+                              const { data: u } = await supabase.functions.invoke("usage-status");
+                              if (u && typeof u.count === "number") setUsage({ count: u.count, limit: u.limit, remaining: u.remaining });
+                            } catch {}
+                          } else {
+                            toast.error("Unable to confirm payment");
+                          }
+                        } catch (e) {
+                          console.error("confirm-upi-payment failed:", e);
+                          toast.error("Payment confirmation failed");
+                        }
+                      }}
+                    >Confirm Payment</Button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
         {/* Header */}

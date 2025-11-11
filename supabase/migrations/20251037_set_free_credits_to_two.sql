@@ -20,5 +20,3 @@ update public.image_credits
 set free_remaining = 2,
     updated_at = now()
 where coalesce(free_remaining, 0) <> 2;
-
-comment on migration is 'Set daily free credits to 2 and update app_settings, user_limits, and image_credits.';
