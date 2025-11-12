@@ -3,8 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import { Stage, Layer, Image as KonvaImage, Rect, Text as KonvaText, Group, Transformer } from "react-konva";
+import { Stage, Layer, Image as KonvaImage, Rect, Text as KonvaText, Group, Transformer, Line } from "react-konva";
 import Konva from "konva";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -23,6 +24,28 @@ const ThumbnailLab = () => {
   const [imagePos, setImagePos] = useState({ x: 0, y: 0 });
   const [repolishStyle, setRepolishStyle] = useState<RepolishStyle>("cinematic");
   const [repolishStrength, setRepolishStrength] = useState(0.7);
+  const [frameStyle, setFrameStyle] = useState<
+    | "none"
+    | "border"
+    | "rounded"
+    | "double"
+    | "thin"
+    | "shadow"
+    | "dashed"
+    | "filmstrip"
+    | "innerStroke"
+    | "scanlines"
+    | "polaroid"
+    | "cornerCut"
+    | "grain"
+    | "tapeCorners"
+    | "burnedEdge"
+    | "lightLeak"
+    | "gradientRounded"
+  >("none");
+  const [extraEffect, setExtraEffect] = useState<"none" | "neonGlow" | "vignetteStrong" | "softGlow" | "diagonalRays" | "blueOrange">("none");
+  const [textColor, setTextColor] = useState("#ffffff");
+  const [subtitleColor, setSubtitleColor] = useState("#ffffff");
   const [mode, setMode] = useState<"generate" | "repolish">("generate");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [texts, setTexts] = useState<Array<TextLayer>>([]);
@@ -32,9 +55,13 @@ const ThumbnailLab = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState<string>("");
   const [editorStyle, setEditorStyle] = useState<{ left: number; top: number; width: number } | null>(null);
+  const [imageSelected, setImageSelected] = useState(false);
+  const [imageAlwaysHandles, setImageAlwaysHandles] = useState(false);
+  const [imageFit, setImageFit] = useState<"free" | "contain" | "cover">("free");
 
   const stageRef = useRef<any>(null);
   const imgRef = useRef<any>(null);
+  const imgTrRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const width = 1280;
@@ -117,6 +144,29 @@ const ThumbnailLab = () => {
     }
   }, []);
 
+  useEffect(() => {
+    if (imageSelected && imgTrRef.current && imgRef.current) {
+      imgTrRef.current.nodes([imgRef.current]);
+      imgTrRef.current.getLayer()?.batchDraw?.();
+    }
+  }, [imageSelected]);
+
+  // Auto-fit or cover the image based on selected mode
+  useEffect(() => {
+    if (!imageObj) return;
+    if (imageFit === "free") return;
+    const imgW = (imageObj as any).naturalWidth ?? (imageObj as any).width;
+    const imgH = (imageObj as any).naturalHeight ?? (imageObj as any).height;
+    if (!imgW || !imgH) return;
+    const scaleX = width / imgW;
+    const scaleY = height / imgH;
+    const scale = imageFit === "contain" ? Math.min(scaleX, scaleY) : Math.max(scaleX, scaleY);
+    setImageScale(scale);
+    const centeredX = (width - imgW * scale) / 2;
+    const centeredY = (height - imgH * scale) / 2;
+    setImagePos({ x: centeredX, y: centeredY });
+  }, [imageFit, imageObj]);
+
   const beginEditOverlay = (args: { id: string; currentText: string; node: any }) => {
     try {
       const stage = stageRef.current as any;
@@ -164,10 +214,30 @@ const ThumbnailLab = () => {
     }
 
     try {
+      // Require login before invoking Edge Function
+      const { data: sessionData } = await supabase.auth.getSession();
+      const isLoggedIn = !!sessionData.session?.user;
+      if (!isLoggedIn) {
+        toast.error("Please login to generate with AI");
+        return;
+      }
+      // Credits gating (aligns with server credit enforcement)
+      try {
+        const { data: usage } = await supabase.functions.invoke("usage-status");
+        const remaining = (usage?.remaining ?? usage?.credits ?? 0) as number;
+        if (!remaining || remaining <= 0) {
+          toast.error("No credits left. Please contact support or purchase credits.");
+          return;
+        }
+      } catch (e) {
+        console.warn("usage-status check failed", e);
+      }
+
       setBusy(true);
       const { data, error } = await supabase.functions.invoke("generate-image", { body: { prompt } });
       if (error) {
-        const msg = (error as any)?.message || "Generation failed";
+        const status = (error as any)?.status || (error as any)?.context?.status;
+        const msg = (error as any)?.message || (status === 401 ? "Unauthorized: Please login" : status === 402 ? "No credits remaining" : "Generation failed");
         toast.error(msg);
         console.error("generate-image error", error);
         return;
@@ -212,9 +282,9 @@ const ThumbnailLab = () => {
             </div>
           </div>
           <div className="space-y-2">
-            <label className="text-xs">Title / Prompt</label>
-            <Textarea value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. How to grow YouTube channel in 2025 [accent:#ff0000] [emoji:🚀]" rows={3} />
-            <p className="text-[10px] text-muted-foreground">Optimized: <span className="font-medium">{optimizedTitle || "(enter title)"}</span></p>
+            <label className="text-xs">Prompt</label>
+            <Textarea value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Cinematic portrait, teal & orange, high contrast [style:cinematic] [strength:0.8]" rows={3} />
+            <p className="text-[10px] text-muted-foreground">Optimized Prompt: <span className="font-medium">{optimizedTitle || "(enter prompt)"}</span></p>
             <p className="text-[10px] text-muted-foreground">Parsed: accent {parsedTokens.accent || "(none)"} · emoji {parsedTokens.emoji || "(none)"} · style {parsedTokens.style || "(none)"} · strength {typeof parsedTokens.strength === "number" ? parsedTokens.strength.toFixed(2) : "(none)"}</p>
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -267,6 +337,16 @@ const ThumbnailLab = () => {
                             const parts = (emoji || '').trim();
                             const next = parts ? `${parts} ${em}` : em;
                             setEmoji(next);
+                            // Also apply emoji to canvas: append to selected text/subtitle or add a new layer
+                            if (selectedId === 'subtitle') {
+                              setSubtitle((prev) => (prev ? `${prev} ${em}` : em));
+                            } else if (selectedId) {
+                              setTexts((prev) => prev.map((t) => (
+                                t.id === selectedId ? { ...t, text: (t.text ? `${t.text} ${em}` : em) } : t
+                              )));
+                            } else {
+                              setTexts((prev) => prev.concat([{ id: `t${Date.now()}`, text: em, x: 100, y: 100, fontSize: 72, fill: textColor }]));
+                            }
                           }}
                         >
                           {em}
@@ -317,21 +397,54 @@ const ThumbnailLab = () => {
               </select>
             </div>
           </div>
-          <div className="flex gap-2 pt-2 items-center">
-            <div className="flex items-center gap-1">
-              <label className="text-xs">Mode</label>
-              <select className="border rounded-md h-9 px-2 bg-card" value={mode} onChange={(e) => setMode(e.target.value as any)}>
-                <option value="generate">Generate (AI)</option>
-                <option value="repolish">Repolish (Local)</option>
+          <div className="space-y-2 mt-2">
+            <label className="text-xs">Text Color</label>
+            <Input type="color" value={textColor} onChange={(e) => {
+              const val = e.target.value;
+              setTextColor(val);
+              if (selectedId === 'subtitle') {
+                setSubtitleColor(val);
+              } else if (selectedId) {
+                updateTextLayer(setTexts, selectedId, { fill: val });
+              }
+            }} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-2">
+              <label className="text-xs">Frame</label>
+              <select className="border rounded-md h-9 px-2 bg-card" value={frameStyle} onChange={(e) => setFrameStyle(e.target.value as any)}>
+                <option value="none">None</option>
+                <option value="border">Clean Border</option>
+                <option value="rounded">Rounded Border</option>
+                <option value="double">Double Border</option>
+                <option value="thin">Thin Border</option>
+                <option value="shadow">Accent Shadow</option>
+                <option value="dashed">Dashed Border</option>
+                <option value="filmstrip">Film Strip Corners</option>
+                <option value="innerStroke">Inner Stroke</option>
+                <option value="scanlines">Scanlines</option>
+                <option value="polaroid">Polaroid</option>
+                <option value="cornerCut">Corner Cut</option>
+                <option value="grain">Analog Noise/Grain</option>
+                <option value="tapeCorners">Tape Corners</option>
+                <option value="burnedEdge">Burned Edge + Vignette</option>
+                <option value="lightLeak">Light Leak Borders</option>
+                <option value="gradientRounded">Gradient Border (Rounded)</option>
               </select>
             </div>
-            <Button disabled={busy || !imageObj} onClick={download}>{busy ? "Preparing…" : "Download PNG"}</Button>
-            <Button variant="secondary" onClick={() => addTextLayer(setTexts)}>Add Text Box</Button>
-            <Button variant="secondary" onClick={() => addSticker(setStickers, "subscribe")}>Add Subscribe</Button>
-            <Button variant="secondary" onClick={() => addSticker(setStickers, "comment")}>Add Comment</Button>
-            <Button variant="secondary" onClick={() => addSticker(setStickers, "like")}>Add Like</Button>
-            <Button variant="default" disabled={busy || !title.trim()} onClick={generateFromPrompt}>{mode === "generate" ? "Generate Image (AI)" : "Apply Repolish"}</Button>
+            <div className="space-y-2">
+              <label className="text-xs">Extra Effects</label>
+              <select className="border rounded-md h-9 px-2 bg-card" value={extraEffect} onChange={(e) => setExtraEffect(e.target.value as any)}>
+                <option value="none">None</option>
+                <option value="neonGlow">Neon Glow Overlay</option>
+                <option value="vignetteStrong">Strong Vignette</option>
+                <option value="softGlow">Soft Glow</option>
+                <option value="diagonalRays">Diagonal Rays</option>
+                <option value="blueOrange">Blue/Orange Film</option>
+              </select>
+            </div>
           </div>
+          {/* Actions moved below canvas for clearer layout */}
           <ul className="text-[10px] text-muted-foreground space-y-1 pt-2 list-disc pl-4">
             <li>Use 1280×720, high contrast text, and minimal words.</li>
             <li>Place face/subject right or left; avoid center clutter.</li>
@@ -339,12 +452,70 @@ const ThumbnailLab = () => {
           </ul>
         </Card>
 
+        {/* Bottom action toolbar spanning full width */}
+        <Card className="md:col-span-2 p-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs">Mode</span>
+              <select className="border rounded-md h-9 px-2 bg-card" value={mode} onChange={(e) => setMode(e.target.value as any)}>
+                <option value="generate">Generate (AI)</option>
+                <option value="repolish">Repolish (Local)</option>
+              </select>
+            </div>
+            {/* Image Fit Mode */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs">Image Fit</span>
+              <select className="border rounded-md h-9 px-2 bg-card" value={imageFit} onChange={(e) => setImageFit(e.target.value as any)}>
+                <option value="free">Free</option>
+                <option value="contain">Contain</option>
+                <option value="cover">Cover</option>
+              </select>
+            </div>
+            {/* Always show handles */}
+            <label className="flex items-center gap-2 text-xs">
+              <input type="checkbox" checked={imageAlwaysHandles} onChange={(e) => setImageAlwaysHandles(e.target.checked)} />
+              Always Show Handles
+            </label>
+            {/* Quick Text Color Picker */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs">Text Color</span>
+              <Input type="color" value={textColor} onChange={(e) => {
+                const val = e.target.value;
+                setTextColor(val);
+                if (selectedId === 'subtitle') {
+                  setSubtitleColor(val);
+                } else if (selectedId) {
+                  updateTextLayer(setTexts, selectedId, { fill: val });
+                }
+              }} />
+            </div>
+            <Button size="sm" variant="default" disabled={busy || !title.trim()} onClick={generateFromPrompt}>
+              {mode === "generate" ? "Generate Image (AI)" : "Apply Repolish"}
+            </Button>
+            <Button size="sm" disabled={busy || !imageObj} onClick={download}>{busy ? "Preparing…" : "Download PNG"}</Button>
+            <Button size="sm" variant="secondary" onClick={() => addTextLayer(setTexts, textColor)}>Add Text Box</Button>
+            <Button size="sm" variant="secondary" onClick={() => addGlowTextLayer(setTexts, accentColor, textColor)}>Add Glow Text</Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="secondary">Add Sticker</Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onClick={() => addSticker(setStickers, "subscribe")}>Subscribe</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => addSticker(setStickers, "comment")}>Comment</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => addSticker(setStickers, "like")}>Like</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => addSticker(setStickers, "share")}>Share</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => addSticker(setStickers, "follow")}>Follow</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </Card>
+
         <Card className="p-2 flex items-center justify-center">
           <div className="w-full relative" ref={containerRef}>
             <Stage ref={stageRef} width={width} height={height}>
               <Layer>
                 {/* Background */}
-                <Rect x={0} y={0} width={width} height={height} fill={bgStyle === "dark" ? "#090909" : "#f4f4f4"} />
+                <Rect x={0} y={0} width={width} height={height} fill={bgStyle === "dark" ? "#090909" : "#f4f4f4"} onClick={() => setImageSelected(false)} />
 
                 {/* Image with subtle vignette */}
                 {imageObj && (
@@ -358,6 +529,13 @@ const ThumbnailLab = () => {
                       scaleY={imageScale}
                       draggable
                       onDragEnd={(e) => setImagePos({ x: e.target.x(), y: e.target.y() })}
+                      onTransformEnd={(e) => {
+                        const node = e.target as any;
+                        const s = node.scaleX();
+                        node.scaleX(1); node.scaleY(1);
+                        // Update controlled scale
+                        setImageScale(Math.max(0.1, s));
+                      }}
                       width={width}
                       height={height}
                     />
@@ -365,39 +543,23 @@ const ThumbnailLab = () => {
                       fillLinearGradientStartPoint={{ x: 0, y: 0 }}
                       fillLinearGradientEndPoint={{ x: width, y: 0 }}
                       fillLinearGradientColorStops={[0, `rgba(0,0,0,${Math.min(0.8, repolishSettings.vignette)})`, 1, "rgba(0,0,0,0)"]}
+                      listening={false}
                     />
                     {repolishSettings.overlay && (
                       <Rect x={0} y={0} width={width} height={height}
                         fill={repolishSettings.overlay}
                         opacity={repolishSettings.overlayOpacity}
                         globalCompositeOperation={repolishSettings.overlayBlend}
+                        listening={false}
                       />
                     )}
                   </Group>
                 )}
 
                 {/* Accent banner */}
-                <Rect x={0} y={height - 120} width={width} height={120} fill={accentColor} opacity={0.9} />
+                <Rect x={0} y={height - 120} width={width} height={120} fill={accentColor} opacity={0.9} listening={false} />
 
-                {/* Title */}
-                <SelectableText
-                  id="title"
-                  text={`${emoji ? emoji + " " : ""}${optimizedTitle}`}
-                  x={40}
-                  y={height - 110}
-                  width={width - 80}
-                  fontSize={72}
-                  fontFamily={fontFamilyForPreset(fontPreset)}
-                  fill="#fff"
-                  stroke="#000"
-                  strokeWidth={6}
-                  shadowColor="#000"
-                  shadowBlur={10}
-                  shadowOffsetY={6}
-                  selectedId={selectedId}
-                  onSelect={setSelectedId}
-                  onEditRequest={(args) => beginEditOverlay(args)}
-                />
+                {/* Title removed: prompt drives AI editing; no text overlay */}
 
                 {/* Subtitle */}
                 {subtitle && (
@@ -409,7 +571,7 @@ const ThumbnailLab = () => {
                     text={subtitle}
                     fontSize={36}
                     fontFamily={fontFamilyForPreset(fontPreset)}
-                    fill="#fff"
+                    fill={subtitleColor}
                     stroke="#000"
                     strokeWidth={4}
                     shadowColor="#000"
@@ -435,15 +597,65 @@ const ThumbnailLab = () => {
                     fill={t.fill}
                     stroke={t.stroke ?? "#000"}
                     strokeWidth={t.strokeWidth ?? 2}
-                    shadowColor="#000"
-                    shadowBlur={8}
-                    shadowOffsetY={5}
+                    shadowColor={t.shadowColor ?? "#000"}
+                    shadowBlur={t.shadowBlur ?? 8}
+                    shadowOffsetY={t.shadowOffsetY ?? 5}
                     selectedId={selectedId}
                     onSelect={setSelectedId}
                     onChange={(attrs) => updateTextLayer(setTexts, t.id, attrs)}
                     onEditRequest={(args) => beginEditOverlay(args)}
                   />
                 ))}
+
+                {/* Extra visual effects overlays */}
+                {extraEffect === "neonGlow" && (
+                    <Rect x={0} y={0} width={width} height={height}
+                      fillRadialGradientStartPoint={{ x: width/2, y: height/2 }}
+                      fillRadialGradientEndPoint={{ x: width/2, y: height/2 }}
+                      fillRadialGradientColorStops={[0, `${accentColor}AA`, 0.6, "rgba(0,0,0,0)"]}
+                      globalCompositeOperation="screen"
+                      opacity={0.35}
+                      listening={false}
+                  />
+                )}
+                {extraEffect === "vignetteStrong" && (
+                  <Rect x={0} y={0} width={width} height={height}
+                    fillLinearGradientStartPoint={{ x: 0, y: 0 }}
+                    fillLinearGradientEndPoint={{ x: width, y: 0 }}
+                    fillLinearGradientColorStops={[0, "rgba(0,0,0,0.6)", 1, "rgba(0,0,0,0.6)"]}
+                    listening={false}
+                  />
+                )}
+                {extraEffect === "softGlow" && (
+                  <Rect x={0} y={0} width={width} height={height}
+                    fillRadialGradientStartPoint={{ x: width/2, y: height/2 }}
+                    fillRadialGradientEndPoint={{ x: width/2, y: height/2 }}
+                    fillRadialGradientColorStops={[0, `${accentColor}66`, 0.7, "rgba(0,0,0,0)"]}
+                    globalCompositeOperation="soft-light"
+                    opacity={0.45}
+                    listening={false}
+                  />
+                )}
+                {extraEffect === "diagonalRays" && (
+                  <Group listening={false}>
+                    {[0,1,2,3].map((i) => (
+                      <Rect key={i} x={-width/2 + i*360} y={0} width={width} height={height}
+                        rotation={-35}
+                        fillLinearGradientStartPoint={{ x: 0, y: 0 }}
+                        fillLinearGradientEndPoint={{ x: width, y: 0 }}
+                        fillLinearGradientColorStops={[0, "rgba(255,255,255,0)", 0.5, `${accentColor}22`, 1, "rgba(255,255,255,0)"]}
+                        globalCompositeOperation="screen"
+                        opacity={0.5}
+                      />
+                    ))}
+                  </Group>
+                )}
+                {extraEffect === "blueOrange" && (
+                  <Group listening={false}>
+                    <Rect x={0} y={0} width={width} height={height} fill="rgba(255,120,0,0.12)" globalCompositeOperation="soft-light" />
+                    <Rect x={0} y={0} width={width} height={height} fill="rgba(80,160,255,0.15)" globalCompositeOperation="overlay" />
+                  </Group>
+                )}
 
                 {/* Auto-emphasis tags */}
                 <Group>
@@ -456,7 +668,240 @@ const ThumbnailLab = () => {
                 </Group>
 
                 {/* Stickers layer */}
-                {stickers.map((s) => renderSticker(s, setSelectedId, selectedId))}
+                {stickers.map((s) => renderSticker(s, setSelectedId, selectedId, setStickers))}
+                {/* Frame overlays (topmost) */}
+                {frameStyle !== "none" && (
+                  <Group listening={false}>
+                    {frameStyle === "border" && (
+                      <Rect x={6} y={6} width={width - 12} height={height - 12} stroke={accentColor} strokeWidth={12} cornerRadius={6} opacity={0.95} />
+                    )}
+                    {frameStyle === "rounded" && (
+                      <Rect x={10} y={10} width={width - 20} height={height - 20} stroke={accentColor} strokeWidth={12} cornerRadius={32} opacity={0.95} />
+                    )}
+                    {frameStyle === "double" && (
+                      <>
+                        <Rect x={8} y={8} width={width - 16} height={height - 16} stroke={accentColor} strokeWidth={10} cornerRadius={18} opacity={0.95} />
+                        <Rect x={22} y={22} width={width - 44} height={height - 44} stroke="#ffffff" strokeWidth={6} cornerRadius={18} opacity={0.85} />
+                      </>
+                    )}
+                    {frameStyle === "thin" && (
+                      <Rect x={12} y={12} width={width - 24} height={height - 24} stroke={accentColor} strokeWidth={4} cornerRadius={10} opacity={0.95} />
+                    )}
+                    {frameStyle === "shadow" && (
+                      <Rect x={10} y={10} width={width - 20} height={height - 20} stroke={accentColor} strokeWidth={8} cornerRadius={18} shadowColor="#000" shadowBlur={40} opacity={0.98} />
+                    )}
+                    {frameStyle === "dashed" && (
+                      <Line
+                        points={[12,12, width-12,12, width-12,height-12, 12,height-12]}
+                        closed
+                        stroke={accentColor}
+                        strokeWidth={8}
+                        dash={[20,16]}
+                      />
+                    )}
+                    {frameStyle === "filmstrip" && (
+                      <>
+                        {/* Top strip */}
+                        <Rect x={0} y={0} width={width} height={60} fill={bgStyle === 'dark' ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.3)'} />
+                        {/* Bottom strip */}
+                        <Rect x={0} y={height - 60} width={width} height={60} fill={bgStyle === 'dark' ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.3)'} />
+                        {/* Holes */}
+                        {Array.from({ length: Math.floor(width / 90) }).map((_, i) => (
+                          <Rect key={`top-hole-${i}`} x={20 + i * 90} y={12} width={48} height={28} cornerRadius={6} fill={bgStyle === 'dark' ? '#111' : '#222'} opacity={0.9} />
+                        ))}
+                        {Array.from({ length: Math.floor(width / 90) }).map((_, i) => (
+                          <Rect key={`bottom-hole-${i}`} x={20 + i * 90} y={height - 40} width={48} height={28} cornerRadius={6} fill={bgStyle === 'dark' ? '#111' : '#222'} opacity={0.9} />
+                        ))}
+                      </>
+                    )}
+                    {frameStyle === "innerStroke" && (
+                      <>
+                        <Rect x={20} y={20} width={width - 40} height={height - 40} stroke="#ffffff" strokeWidth={6} cornerRadius={14} opacity={0.95} />
+                        <Rect x={34} y={34} width={width - 68} height={height - 68} stroke={accentColor} strokeWidth={4} cornerRadius={12} opacity={0.95} />
+                      </>
+                    )}
+                    {frameStyle === "scanlines" && (
+                      <Group>
+                        {Array.from({ length: Math.floor(height / 4) }).map((_, i) => (
+                          <Rect key={`scan-${i}`} x={0} y={i * 4} width={width} height={2} fill={bgStyle === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.08)'} />
+                        ))}
+                      </Group>
+                    )}
+                    {frameStyle === "polaroid" && (
+                      <>
+                        <Rect x={18} y={18} width={width - 36} height={height - 36} stroke="#ffffff" strokeWidth={18} cornerRadius={10} opacity={0.98} />
+                        {/* Thicker bottom margin look */}
+                        <Rect x={18} y={height - 110} width={width - 36} height={92} fill="rgba(255,255,255,0.9)" />
+                      </>
+                    )}
+                    {frameStyle === "cornerCut" && (
+                      <>
+                        <Line points={[0,0, 40,0, 0,40]} closed fill={accentColor} opacity={0.95} />
+                        <Line points={[width,0, width-40,0, width,40]} closed fill={accentColor} opacity={0.95} />
+                        <Line points={[0,height, 40,height, 0,height-40]} closed fill={accentColor} opacity={0.95} />
+                        <Line points={[width,height, width-40,height, width,height-40]} closed fill={accentColor} opacity={0.95} />
+                      </>
+                    )}
+                    {frameStyle === "grain" && (
+                      <Group listening={false}>
+                        {Array.from({ length: Math.max(200, Math.floor((width * height) / 4000)) }).map((_, i) => {
+                          const x = (i * 37) % width;
+                          const y = (i * 61) % height;
+                          const nearEdge = x < 60 || x > width - 60 || y < 60 || y > height - 60;
+                          if (!nearEdge) return null;
+                          const col = i % 2 === 0 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.07)';
+                          return (
+                            <Rect key={`grain-${i}`} x={x} y={y} width={2} height={2} cornerRadius={1} fill={col} />
+                          );
+                        })}
+                      </Group>
+                    )}
+                    {frameStyle === "tapeCorners" && (
+                      <>
+                        {/* masking tape look on corners */}
+                        <Rect x={24} y={24} width={100} height={26} fill="#f5e6c5" opacity={0.92} cornerRadius={6} rotation={-10} shadowColor="#000" shadowBlur={18} shadowOpacity={0.35} />
+                        <Rect x={width - 124} y={28} width={100} height={26} fill="#f5e6c5" opacity={0.92} cornerRadius={6} rotation={12} shadowColor="#000" shadowBlur={18} shadowOpacity={0.35} />
+                        <Rect x={24} y={height - 52} width={100} height={26} fill="#f5e6c5" opacity={0.92} cornerRadius={6} rotation={9} shadowColor="#000" shadowBlur={18} shadowOpacity={0.35} />
+                        <Rect x={width - 140} y={height - 60} width={116} height={26} fill="#f5e6c5" opacity={0.92} cornerRadius={6} rotation={-12} shadowColor="#000" shadowBlur={18} shadowOpacity={0.35} />
+                      </>
+                    )}
+                    {frameStyle === "burnedEdge" && (
+                      <Group listening={false}>
+                        {/* top burn */}
+                        <Rect
+                          x={0}
+                          y={0}
+                          width={width}
+                          height={90}
+                          fillLinearGradientStartPoint={{ x: width / 2, y: 0 }}
+                          fillLinearGradientEndPoint={{ x: width / 2, y: 90 }}
+                          fillLinearGradientColorStops={[0, 'rgba(0,0,0,0.0)', 0.7, 'rgba(80,40,0,0.45)', 1, 'rgba(0,0,0,0.65)']}
+                        />
+                        {/* bottom burn */}
+                        <Rect
+                          x={0}
+                          y={height - 90}
+                          width={width}
+                          height={90}
+                          fillLinearGradientStartPoint={{ x: width / 2, y: height - 0 }}
+                          fillLinearGradientEndPoint={{ x: width / 2, y: height - 90 }}
+                          fillLinearGradientColorStops={[0, 'rgba(0,0,0,0.0)', 0.7, 'rgba(80,40,0,0.45)', 1, 'rgba(0,0,0,0.65)']}
+                        />
+                        {/* left burn */}
+                        <Rect
+                          x={0}
+                          y={0}
+                          width={90}
+                          height={height}
+                          fillLinearGradientStartPoint={{ x: 0, y: height / 2 }}
+                          fillLinearGradientEndPoint={{ x: 90, y: height / 2 }}
+                          fillLinearGradientColorStops={[0, 'rgba(0,0,0,0.0)', 0.7, 'rgba(80,40,0,0.45)', 1, 'rgba(0,0,0,0.65)']}
+                        />
+                        {/* right burn */}
+                        <Rect
+                          x={width - 90}
+                          y={0}
+                          width={90}
+                          height={height}
+                          fillLinearGradientStartPoint={{ x: width, y: height / 2 }}
+                          fillLinearGradientEndPoint={{ x: width - 90, y: height / 2 }}
+                          fillLinearGradientColorStops={[0, 'rgba(0,0,0,0.0)', 0.7, 'rgba(80,40,0,0.45)', 1, 'rgba(0,0,0,0.65)']}
+                        />
+                      </Group>
+                    )}
+                    {frameStyle === "lightLeak" && (
+                      <Group listening={false}>
+                        {/* warm leak on left */}
+                        <Rect
+                          x={0}
+                          y={0}
+                          width={140}
+                          height={height}
+                          opacity={0.55}
+                          fillLinearGradientStartPoint={{ x: 0, y: height / 2 }}
+                          fillLinearGradientEndPoint={{ x: 140, y: height / 2 }}
+                          fillLinearGradientColorStops={[0, 'rgba(255,120,80,0.0)', 0.5, 'rgba(255,120,80,0.6)', 1, 'rgba(255,220,120,0.0)']}
+                        />
+                        {/* cool leak on right */}
+                        <Rect
+                          x={width - 160}
+                          y={0}
+                          width={160}
+                          height={height}
+                          opacity={0.55}
+                          fillLinearGradientStartPoint={{ x: width - 160, y: height / 2 }}
+                          fillLinearGradientEndPoint={{ x: width, y: height / 2 }}
+                          fillLinearGradientColorStops={[0, 'rgba(120,80,255,0.0)', 0.5, 'rgba(120,80,255,0.6)', 1, 'rgba(255,140,220,0.0)']}
+                        />
+                      </Group>
+                    )}
+                    {frameStyle === "gradientRounded" && (
+                      <Group listening={false}>
+                        {/* top strip */}
+                        <Rect
+                          x={12}
+                          y={12}
+                          width={width - 24}
+                          height={22}
+                          cornerRadius={12}
+                          fillLinearGradientStartPoint={{ x: width / 2, y: 12 }}
+                          fillLinearGradientEndPoint={{ x: width / 2, y: 34 }}
+                          fillLinearGradientColorStops={[0, 'rgba(255,255,255,0.0)', 1, accentColor]}
+                          opacity={0.9}
+                        />
+                        {/* bottom strip */}
+                        <Rect
+                          x={12}
+                          y={height - 34}
+                          width={width - 24}
+                          height={22}
+                          cornerRadius={12}
+                          fillLinearGradientStartPoint={{ x: width / 2, y: height - 12 }}
+                          fillLinearGradientEndPoint={{ x: width / 2, y: height - 34 }}
+                          fillLinearGradientColorStops={[0, 'rgba(255,255,255,0.0)', 1, accentColor]}
+                          opacity={0.9}
+                        />
+                        {/* left strip */}
+                        <Rect
+                          x={12}
+                          y={12}
+                          width={22}
+                          height={height - 24}
+                          cornerRadius={12}
+                          fillLinearGradientStartPoint={{ x: 12, y: height / 2 }}
+                          fillLinearGradientEndPoint={{ x: 34, y: height / 2 }}
+                          fillLinearGradientColorStops={[0, 'rgba(255,255,255,0.0)', 1, accentColor]}
+                          opacity={0.9}
+                        />
+                        {/* right strip */}
+                        <Rect
+                          x={width - 34}
+                          y={12}
+                          width={22}
+                          height={height - 24}
+                          cornerRadius={12}
+                          fillLinearGradientStartPoint={{ x: width - 12, y: height / 2 }}
+                          fillLinearGradientEndPoint={{ x: width - 34, y: height / 2 }}
+                          fillLinearGradientColorStops={[0, 'rgba(255,255,255,0.0)', 1, accentColor]}
+                          opacity={0.9}
+                        />
+                      </Group>
+                    )}
+                  </Group>
+                )}
+                {/* Clickable border to select image and show resize handles */}
+                <Rect
+                  x={0}
+                  y={0}
+                  width={width}
+                  height={height}
+                  stroke={"rgba(0,0,0,0)"}
+                  hitStrokeWidth={24}
+                  onClick={() => setImageSelected(true)}
+                />
+                {(imageSelected || imageAlwaysHandles) && (
+                  <Transformer ref={imgTrRef} rotateEnabled={false} enabledAnchors={["top-left","top-right","bottom-left","bottom-right"]} />
+                )}
               </Layer>
             </Stage>
             {editingId && editorStyle && (
@@ -517,9 +962,12 @@ type TextLayer = {
   stroke?: string;
   strokeWidth?: number;
   preset?: FontPreset;
+  shadowColor?: string;
+  shadowBlur?: number;
+  shadowOffsetY?: number;
 };
 
-type StickerKind = "subscribe" | "comment" | "like";
+type StickerKind = "subscribe" | "comment" | "like" | "share" | "follow";
 type Sticker = { id: string; kind: StickerKind; x: number; y: number };
 
 const presetColors = ["#ff3b3b", "#22c55e", "#3b82f6", "#f59e0b", "#a855f7", "#0ea5e9"];
@@ -617,8 +1065,13 @@ function suggestStyleFromPrompt(s: string): RepolishStyle | null {
 }
 
 // Text layer helpers
-function addTextLayer(setTexts: (updater: any) => void) {
-  setTexts((prev: TextLayer[]) => prev.concat([{ id: `t${Date.now()}`, text: "New Text", x: 60, y: 60, fontSize: 48, fill: "#ffffff" }]));
+function addTextLayer(setTexts: (updater: any) => void, color?: string) {
+  setTexts((prev: TextLayer[]) => prev.concat([{ id: `t${Date.now()}`, text: "New Text", x: 60, y: 60, fontSize: 48, fill: color ?? "#ffffff" }]));
+}
+function addGlowTextLayer(setTexts: (updater: any) => void, accent: string, color?: string) {
+  setTexts((prev: TextLayer[]) => prev.concat([
+    { id: `t${Date.now()}`, text: "Glow Text", x: 80, y: 80, fontSize: 72, fill: color ?? "#ffffff", stroke: "#000000", strokeWidth: 2, shadowColor: accent, shadowBlur: 24, shadowOffsetY: 0, preset: "impact" }
+  ]));
 }
 function updateTextLayer(setTexts: (updater: any) => void, id: string, attrs: Partial<TextLayer>) {
   setTexts((prev: TextLayer[]) => prev.map((t) => (t.id === id ? { ...t, ...attrs } : t)));
@@ -658,12 +1111,16 @@ function getRepolishSettings(style: RepolishStyle, strength: number) {
 function addSticker(setStickers: (updater: any) => void, kind: StickerKind) {
   setStickers((prev: Sticker[]) => prev.concat([{ id: `s${Date.now()}`, kind, x: 40, y: 40 }]));
 }
-function renderSticker(s: Sticker, setSelectedId: (id: string) => void, selectedId: string | null) {
+function updateSticker(setStickers: (updater: any) => void, id: string, attrs: Partial<Sticker>) {
+  setStickers((prev: Sticker[]) => prev.map((st) => (st.id === id ? { ...st, ...attrs } : st)));
+}
+
+function renderSticker(s: Sticker, setSelectedId: (id: string) => void, selectedId: string | null, setStickers: (updater: any) => void) {
   const common = { shadowColor: '#000', shadowBlur: 6 } as const;
   const isSel = selectedId === s.id;
   if (s.kind === 'subscribe') {
     return (
-      <Group key={s.id} x={s.x} y={s.y} draggable onClick={() => setSelectedId(s.id)}>
+      <Group key={s.id} x={s.x} y={s.y} draggable onClick={() => setSelectedId(s.id)} onDragEnd={(e) => updateSticker(setStickers, s.id, { x: e.target.x(), y: e.target.y() })}>
         <Rect width={220} height={60} cornerRadius={12} fill="#ff0000" {...common} opacity={0.95} />
         <KonvaText text={"SUBSCRIBE 🔔"} x={16} y={16} fontSize={28} fontStyle="bold" fill="#fff" />
         {isSel && <Transformer rotateEnabled={false} />}
@@ -672,15 +1129,33 @@ function renderSticker(s: Sticker, setSelectedId: (id: string) => void, selected
   }
   if (s.kind === 'comment') {
     return (
-      <Group key={s.id} x={s.x} y={s.y} draggable onClick={() => setSelectedId(s.id)}>
+      <Group key={s.id} x={s.x} y={s.y} draggable onClick={() => setSelectedId(s.id)} onDragEnd={(e) => updateSticker(setStickers, s.id, { x: e.target.x(), y: e.target.y() })}>
         <Rect width={240} height={60} cornerRadius={12} fill="#3b82f6" {...common} opacity={0.95} />
         <KonvaText text={"COMMENT 💬"} x={16} y={16} fontSize={28} fontStyle="bold" fill="#fff" />
         {isSel && <Transformer rotateEnabled={false} />}
       </Group>
     );
   }
+  if (s.kind === 'share') {
+    return (
+      <Group key={s.id} x={s.x} y={s.y} draggable onClick={() => setSelectedId(s.id)} onDragEnd={(e) => updateSticker(setStickers, s.id, { x: e.target.x(), y: e.target.y() })}>
+        <Rect width={200} height={60} cornerRadius={12} fill="#a855f7" {...common} opacity={0.95} />
+        <KonvaText text={"SHARE ↗"} x={16} y={16} fontSize={28} fontStyle="bold" fill="#fff" />
+        {isSel && <Transformer rotateEnabled={false} />}
+      </Group>
+    );
+  }
+  if (s.kind === 'follow') {
+    return (
+      <Group key={s.id} x={s.x} y={s.y} draggable onClick={() => setSelectedId(s.id)} onDragEnd={(e) => updateSticker(setStickers, s.id, { x: e.target.x(), y: e.target.y() })}>
+        <Rect width={220} height={60} cornerRadius={30} fill="#f59e0b" {...common} opacity={0.95} />
+        <KonvaText text={"FOLLOW ⭐"} x={20} y={16} fontSize={28} fontStyle="bold" fill="#fff" />
+        {isSel && <Transformer rotateEnabled={false} />}
+      </Group>
+    );
+  }
   return (
-    <Group key={s.id} x={s.x} y={s.y} draggable onClick={() => setSelectedId(s.id)}>
+    <Group key={s.id} x={s.x} y={s.y} draggable onClick={() => setSelectedId(s.id)} onDragEnd={(e) => updateSticker(setStickers, s.id, { x: e.target.x(), y: e.target.y() })}>
       <Rect width={160} height={60} cornerRadius={30} fill="#22c55e" {...common} opacity={0.95} />
       <KonvaText text={"LIKE 👍"} x={28} y={16} fontSize={28} fontStyle="bold" fill="#fff" />
       {isSel && <Transformer rotateEnabled={false} />}

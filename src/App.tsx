@@ -13,6 +13,7 @@ import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Refunds from "./pages/Refunds";
 import Dashboard from "./pages/Dashboard";
+import ThumbnailLab from "./pages/ThumbnailLab";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +33,10 @@ const App = () => (
           <Route path="/terms" element={<Terms />} />
           {/* Shipping route removed */}
           <Route path="/refunds" element={<Refunds />} />
+          {import.meta.env.DEV && (
+            // Local-only route for experimenting with thumbnails
+            <Route path="/thumbnail-lab" element={<ThumbnailLab />} />
+          )}
           {/* Hidden admin route: not linked anywhere */}
           <Route path="/admin-quiet-6b27c9" element={<Admin />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

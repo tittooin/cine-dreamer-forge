@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
@@ -368,6 +369,19 @@ const Index = () => {
       </div>
 
       <div className="relative z-10 w-full max-w-4xl space-y-8">
+        {/* Quick access to Dashboard so users don't have to hunt */}
+        <Card className="p-4 border-dashed">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-xs text-muted-foreground">Manage credits and history</div>
+              <div className="text-lg font-medium">Open Dashboard</div>
+              <div className="text-xs text-muted-foreground">View remaining credits, purchases, and payment status</div>
+            </div>
+            <Link to="/dashboard" className="inline-flex">
+              <Button>Dashboard</Button>
+            </Link>
+          </div>
+        </Card>
         {(
           <div className="bg-card border border-border rounded-2xl p-6 space-y-4 shadow-2xl">
             <h3 className="text-xl font-semibold">Pricing</h3>

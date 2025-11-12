@@ -81,6 +81,22 @@ const Dashboard = () => {
           <div className="text-sm">Please login to view your credits.</div>
         )}
 
+        {/* Quick access to Thumbnail Lab: visible only in dev and when logged in */}
+        {userEmail && import.meta.env.DEV && (
+          <Card className="p-4 border-dashed">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xs text-muted-foreground">Create YouTube thumbnails</div>
+                <div className="text-lg font-medium">Open Thumbnail Lab</div>
+                <div className="text-xs text-muted-foreground">Compose image + text locally, no credits used</div>
+              </div>
+              <Link to="/thumbnail-lab">
+                <Button>Thumbnail Lab</Button>
+              </Link>
+            </div>
+          </Card>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className="p-4">
             <div className="text-xs text-muted-foreground">Remaining Credits</div>
