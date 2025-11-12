@@ -14,6 +14,7 @@ import Terms from "./pages/Terms";
 import Refunds from "./pages/Refunds";
 import Dashboard from "./pages/Dashboard";
 import ThumbnailLab from "./pages/ThumbnailLab";
+import YoutubeThumbnail from "./pages/YoutubeThumbnail";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +34,7 @@ const App = () => (
           <Route path="/terms" element={<Terms />} />
           {/* Shipping route removed */}
           <Route path="/refunds" element={<Refunds />} />
+          <Route path="/youtube-thumbnail" element={<YoutubeThumbnail />} />
           {import.meta.env.DEV && (
             // Local-only route for experimenting with thumbnails
             <Route path="/thumbnail-lab" element={<ThumbnailLab />} />

@@ -142,6 +142,14 @@ const Index = () => {
 
   const watermarkSrc = `${import.meta.env.BASE_URL}logo.png`;
 
+  // SEO: page title and description tuned for ranking on key terms
+  useEffect(() => {
+    document.title = "Text to Image Generator & YouTube Thumbnail Maker | Tittoos AI";
+    const meta = document.querySelector('meta[name="description"]');
+    const desc = "Generate cinematic, realistic images and design YouTube thumbnails with AI. Fast, simple, and creator‑friendly.";
+    if (meta) meta.setAttribute('content', desc);
+  }, []);
+
 
   const handleDownload = async () => {
     if (!generatedImage) return;
@@ -486,10 +494,10 @@ const Index = () => {
             <span className="text-sm text-muted-foreground">Tittoos AI</span>
           </div>
           <h1 className="text-5xl md:text-7xl font-bold text-foreground">
-            Show Your Imagination to The World
+            Text to Image & YouTube Thumbnail Maker
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Transform your imagination into realistic, cinematic images with AI
+            Transform your imagination into realistic, cinematic images and eye‑catching thumbnails with AI.
           </p>
         </div>
 
@@ -554,6 +562,65 @@ const Index = () => {
             </div>
           </div>
         )}
+
+        {/* SEO content: keyword-rich sections and internal links */}
+        <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+          <h2 className="text-2xl font-bold">Text to Image Generator</h2>
+          <p className="text-sm text-muted-foreground">
+            Describe your vision and instantly turn text into images. Our AI creates cinematic, realistic visuals suitable for thumbnails, posters, and social posts.
+          </p>
+          <div className="text-sm">
+            <a href={`${import.meta.env.BASE_URL}`} className="underline">Text to Image</a> ·
+            <Link to="/poster" className="underline ml-1">Poster Editor</Link> ·
+            <Link to="/youtube-thumbnail" className="underline ml-1">YouTube Thumbnail Maker</Link>
+          </div>
+          <h2 className="text-2xl font-bold mt-4">YouTube Thumbnail Maker</h2>
+          <p className="text-sm text-muted-foreground">
+            Craft thumbnails that pop: bold fonts, glow text, frames, stickers, and cinematic color grading. Export at 1280×720 for the best YouTube results.
+          </p>
+          <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1">
+            <li>Impact/Bebas presets for big readable titles</li>
+            <li>Neon glow, vignette, and high contrast for CTR</li>
+            <li>Quick export with watermark option</li>
+          </ul>
+        </div>
+
+        {/* FAQ schema for rich results */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'FAQPage',
+              'mainEntity': [
+                {
+                  '@type': 'Question',
+                  'name': 'What is a Text to Image generator?',
+                  'acceptedAnswer': {
+                    '@type': 'Answer',
+                    'text': 'It converts your written prompt into an image using AI. Tittoos AI focuses on cinematic, realistic output.'
+                  }
+                },
+                {
+                  '@type': 'Question',
+                  'name': 'How do I design a YouTube thumbnail?',
+                  'acceptedAnswer': {
+                    '@type': 'Answer',
+                    'text': 'Generate an image here, then open the Poster editor to add bold text, glow, frames, and stickers. Export at 1280×720.'
+                  }
+                },
+                {
+                  '@type': 'Question',
+                  'name': 'Is there a free plan?',
+                  'acceptedAnswer': {
+                    '@type': 'Answer',
+                    'text': 'We offer low‑cost credits for creators to try and use regularly.'
+                  }
+                }
+              ]
+            }),
+          }}
+        />
       </div>
     </div>
     {/* Footer policy links */}
