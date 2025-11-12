@@ -15,6 +15,9 @@ import Refunds from "./pages/Refunds";
 import Dashboard from "./pages/Dashboard";
 import ThumbnailLab from "./pages/ThumbnailLab";
 import YoutubeThumbnail from "./pages/YoutubeThumbnail";
+import Guides from "./pages/Guides";
+import GuideCinematicPrompts from "./pages/GuideCinematicPrompts";
+import GuideYoutubeCTR from "./pages/GuideYoutubeCTR";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +38,9 @@ const App = () => (
           {/* Shipping route removed */}
           <Route path="/refunds" element={<Refunds />} />
           <Route path="/youtube-thumbnail" element={<YoutubeThumbnail />} />
+          <Route path="/guides" element={<Guides />} />
+          <Route path="/guides/text-to-image-prompts-cinematic-shots" element={<GuideCinematicPrompts />} />
+          <Route path="/guides/youtube-thumbnail-best-practices-ctr" element={<GuideYoutubeCTR />} />
           {import.meta.env.DEV && (
             // Local-only route for experimenting with thumbnails
             <Route path="/thumbnail-lab" element={<ThumbnailLab />} />

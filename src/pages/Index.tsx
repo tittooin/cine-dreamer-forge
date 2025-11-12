@@ -625,6 +625,7 @@ const Index = () => {
     </div>
     {/* Footer policy links */}
     <div className="w-full border-t border-border mt-6 py-4 text-center text-xs text-muted-foreground">
+      <Link to="/guides" className="mx-2 underline">Creator guides</Link>
       <a href={`${import.meta.env.BASE_URL}contact`} className="mx-2 underline">Contact</a>
       <a href={`${import.meta.env.BASE_URL}privacy`} className="mx-2 underline">Privacy</a>
       <a href={`${import.meta.env.BASE_URL}terms`} className="mx-2 underline">Terms</a>

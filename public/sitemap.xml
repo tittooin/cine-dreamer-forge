@@ -35,4 +35,19 @@
     <priority>0.4</priority>
     <changefreq>yearly</changefreq>
   </url>
+  <url>
+    <loc>https://tittoos.cloud/guides</loc>
+    <priority>0.6</priority>
+    <changefreq>weekly</changefreq>
+  </url>
+  <url>
+    <loc>https://tittoos.cloud/guides/text-to-image-prompts-cinematic-shots</loc>
+    <priority>0.7</priority>
+    <changefreq>monthly</changefreq>
+  </url>
+  <url>
+    <loc>https://tittoos.cloud/guides/youtube-thumbnail-best-practices-ctr</loc>
+    <priority>0.7</priority>
+    <changefreq>monthly</changefreq>
+  </url>
 </urlset>
