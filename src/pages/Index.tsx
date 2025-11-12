@@ -490,7 +490,11 @@ const Index = () => {
         {/* Header */}
         <div className="text-center space-y-4">
           <div className="inline-flex items-center gap-3 px-4 py-2 bg-card border border-border rounded-full">
-            <img src={`${import.meta.env.BASE_URL}logo.png`} alt="TittoosAI logo" className="w-6 h-6 rounded-sm" />
+            <img
+              src={`${import.meta.env.BASE_URL}logo.png`}
+              alt="TittoosAI logo"
+              className="w-6 h-6 rounded-sm bg-white"
+            />
             <span className="text-sm text-muted-foreground">Tittoos AI</span>
           </div>
           <h1 className="text-5xl md:text-7xl font-bold text-foreground">

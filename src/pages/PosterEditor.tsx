@@ -466,41 +466,55 @@ const PosterEditor = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={()=>addTextElement(heading || (lang==='hi'? 'AI इमेज मैजिक...' : lang==='mr'? 'AI इमेज मॅजिक...' : 'AI Image Magic'))}>Add Heading</Button>
-            <Button variant="outline" onClick={()=>addTextElement(bullets ? bullets.split('\n')[0] : '• Point')}>Add Bullet</Button>
-            <Button variant="outline" onClick={()=>addTextElement(cta || (lang==='hi'? 'अभी शुरू करें' : lang==='mr'? 'आता सुरू करा' : 'Try now'))}>Add CTA</Button>
-            <Button variant="outline" onClick={()=>setEmojiOpen(true)}>Add Emoji</Button>
-            <Button variant="outline" onClick={()=>addCurvedTextElement(heading || 'Curved Heading')}>Add Curved Text</Button>
-            {/* Style Presets */}
-            <Button variant="outline" onClick={()=>{
-              if (!selectedId) { toast.error('Select a text element'); return; }
-              const el = elements.find(e=>e.id===selectedId);
-              if (!el || el.type !== 'text') { toast.error('Select a text element'); return; }
-              updateSelected({ fontStyle: 'bold', stroke: '#000000', strokeWidth: 3, shadowColor: '#000000', shadowBlur: 8 } as Partial<TextElement>);
-            }}>Outline Bold</Button>
-            <Button variant="outline" onClick={()=>{
-              if (!selectedId) { toast.error('Select a text element'); return; }
-              const el = elements.find(e=>e.id===selectedId);
-              if (!el || el.type !== 'text') { toast.error('Select a text element'); return; }
-              updateSelected({ shadowColor: '#7c3aed', shadowBlur: 16, strokeWidth: 0 } as Partial<TextElement>);
-            }}>Glow</Button>
-            <Button variant="outline" onClick={()=>{
-              if (!selectedId) { toast.error('Select a text element'); return; }
-              const el = elements.find(e=>e.id===selectedId);
-              if (!el || el.type !== 'text') { toast.error('Select a text element'); return; }
-              updateSelected({ shadowColor: '#000000', shadowBlur: 6, strokeWidth: 0 } as Partial<TextElement>);
-            }}>Subtle Shadow</Button>
+          {/* Add elements */}
+          <div className="space-y-2">
+            <div className="text-xs text-muted-foreground">Add elements</div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" onClick={()=>addTextElement(heading || (lang==='hi'? 'AI इमेज मैजिक...' : lang==='mr'? 'AI इमेज मॅजिक...' : 'AI Image Magic'))}>Add Heading</Button>
+              <Button variant="outline" onClick={()=>addTextElement(bullets ? bullets.split('\n')[0] : '• Point')}>Add Bullet</Button>
+              <Button variant="outline" onClick={()=>addTextElement(cta || (lang==='hi'? 'अभी शुरू करें' : lang==='mr'? 'आता सुरू करा' : 'Try now'))}>Add CTA</Button>
+              <Button variant="outline" onClick={()=>setEmojiOpen(true)}>Add Emoji</Button>
+              <Button variant="outline" onClick={()=>addCurvedTextElement(heading || 'Curved Heading')}>Add Curved Text</Button>
+            </div>
+            <div className="text-xs text-muted-foreground pt-2">Text styles (select a text)</div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" onClick={()=>{
+                if (!selectedId) { toast.error('Select a text element'); return; }
+                const el = elements.find(e=>e.id===selectedId);
+                if (!el || el.type !== 'text') { toast.error('Select a text element'); return; }
+                updateSelected({ fontStyle: 'bold', stroke: '#000000', strokeWidth: 3, shadowColor: '#000000', shadowBlur: 8 } as Partial<TextElement>);
+              }}>Outline Bold</Button>
+              <Button variant="outline" onClick={()=>{
+                if (!selectedId) { toast.error('Select a text element'); return; }
+                const el = elements.find(e=>e.id===selectedId);
+                if (!el || el.type !== 'text') { toast.error('Select a text element'); return; }
+                updateSelected({ shadowColor: '#7c3aed', shadowBlur: 16, strokeWidth: 0 } as Partial<TextElement>);
+              }}>Glow</Button>
+              <Button variant="outline" onClick={()=>{
+                if (!selectedId) { toast.error('Select a text element'); return; }
+                const el = elements.find(e=>e.id===selectedId);
+                if (!el || el.type !== 'text') { toast.error('Select a text element'); return; }
+                updateSelected({ shadowColor: '#000000', shadowBlur: 6, strokeWidth: 0 } as Partial<TextElement>);
+              }}>Subtle Shadow</Button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={addRectElement}>Add Shape</Button>
-            <label className="text-sm inline-flex items-center gap-2">
-              <span>Element Image:</span>
-              <input type="file" accept="image/*" onChange={(e)=>{ const f=e.target.files?.[0]; if (f) onUploadElementImage(f); }} />
-            </label>
+          {/* Shapes & element image */}
+          <div className="space-y-2">
+            <div className="text-xs text-muted-foreground">Shapes & images</div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" onClick={addRectElement}>Add Shape</Button>
+              <label className="text-sm inline-flex items-center gap-2">
+                <span>Element Image:</span>
+                <input type="file" accept="image/*" onChange={(e)=>{ const f=e.target.files?.[0]; if (f) onUploadElementImage(f); }} />
+              </label>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="destructive" onClick={removeSelected} disabled={!selectedId}>Delete Selected</Button>
+          {/* Actions */}
+          <div className="space-y-2">
+            <div className="text-xs text-muted-foreground">Actions</div>
+            <div className="flex items-center gap-2">
+              <Button variant="destructive" onClick={removeSelected} disabled={!selectedId}>Delete Selected</Button>
+            </div>
           </div>
         </div>
 
