@@ -66,6 +66,7 @@ const ThumbnailLab = () => {
 
   const width = 1280;
   const height = 720;
+  const [stageScale, setStageScale] = useState(1);
   const emojiSets: Record<string, string[]> = {
     trending: ['🚀','🔥','✨','🎯','📈','🏆','🔔','🆕','💥','⚡','⭐','😎'],
     cinematic: ['🎬','🎥','📽️','🍿','🎞️','🎟️','⭐','📸','🎨','🎭'],
@@ -123,7 +124,8 @@ const ThumbnailLab = () => {
 
   const download = () => {
     try {
-      const uri = stageRef.current?.toDataURL({ mimeType: "image/png", pixelRatio: 1 });
+      // Ensure full-resolution export regardless of current viewport scale
+      const uri = stageRef.current?.toDataURL({ mimeType: "image/png", pixelRatio: 1 / stageScale });
       if (!uri) { toast.error("Nothing to download"); return; }
       const a = document.createElement("a");
       a.href = uri;
@@ -143,6 +145,25 @@ const ThumbnailLab = () => {
       toast.error("Thumbnail Lab is available only locally right now");
     }
   }, []);
+
+  // Responsive: scale stage to fit container width
+  useEffect(() => {
+    const updateScale = () => {
+      const cw = containerRef.current?.clientWidth ?? width;
+      setStageScale(cw / width);
+    };
+    updateScale();
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined" && containerRef.current) {
+      ro = new ResizeObserver(() => updateScale());
+      ro.observe(containerRef.current);
+    }
+    window.addEventListener("resize", updateScale);
+    return () => {
+      window.removeEventListener("resize", updateScale);
+      if (ro) ro.disconnect();
+    };
+  }, [containerRef.current]);
 
   useEffect(() => {
     if (imageSelected && imgTrRef.current && imgRef.current) {
@@ -511,8 +532,8 @@ const ThumbnailLab = () => {
         </Card>
 
         <Card className="p-2 flex items-center justify-center">
-          <div className="w-full relative" ref={containerRef}>
-            <Stage ref={stageRef} width={width} height={height}>
+          <div className="w-full relative overflow-auto" ref={containerRef}>
+            <Stage ref={stageRef} width={width} height={height} scaleX={stageScale} scaleY={stageScale}>
               <Layer>
                 {/* Background */}
                 <Rect x={0} y={0} width={width} height={height} fill={bgStyle === "dark" ? "#090909" : "#f4f4f4"} onClick={() => setImageSelected(false)} />

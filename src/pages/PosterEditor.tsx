@@ -184,6 +184,26 @@ const PosterEditor = () => {
     img.onerror = () => setBgImageObj(null);
   }, [imageUrl]);
 
+  // Responsive: recompute stage scale on container resize or viewport changes
+  useEffect(() => {
+    const updateScale = () => {
+      if (!bgImageObj) return;
+      const cw = containerRef.current?.clientWidth ?? 800;
+      setStageScale(cw / bgImageObj.naturalWidth);
+    };
+    updateScale();
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined" && containerRef.current) {
+      ro = new ResizeObserver(() => updateScale());
+      ro.observe(containerRef.current);
+    }
+    window.addEventListener("resize", updateScale);
+    return () => {
+      window.removeEventListener("resize", updateScale);
+      if (ro) ro.disconnect();
+    };
+  }, [bgImageObj]);
+
   useEffect(() => {
     const stage = stageRef.current as any;
     const tr = trRef.current as any;
