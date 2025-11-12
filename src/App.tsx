@@ -3,6 +3,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
+import { Menu } from "lucide-react";
+import { Drawer, DrawerTrigger, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Admin from "./pages/Admin";
@@ -27,13 +29,38 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter basename={import.meta.env.BASE_URL}>
-        {/* Simple site-wide header with a Guides link */}
-        <header className="w-full border-b border-border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        {/* Site-wide header with quick links and mobile menu */}
+        <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
             <Link to="/" className="text-sm font-semibold">Tittoos AI</Link>
-            <nav className="flex items-center gap-4 text-sm">
+            {/* Desktop nav */}
+            <nav className="hidden md:flex items-center gap-4 text-sm">
               <Link to="/guides" className="underline">Guides</Link>
+              <Link to="/poster" className="underline">Poster</Link>
+              <Link to="/youtube-thumbnail" className="underline">YouTube Thumbnail</Link>
             </nav>
+            {/* Mobile hamburger menu */}
+            <div className="md:hidden">
+              <Drawer>
+                <DrawerTrigger asChild>
+                  <button className="inline-flex items-center gap-1 text-sm">
+                    <Menu className="h-4 w-4" />
+                    Menu
+                  </button>
+                </DrawerTrigger>
+                <DrawerContent>
+                  <DrawerHeader>
+                    <DrawerTitle>Navigation</DrawerTitle>
+                  </DrawerHeader>
+                  <div className="px-4 pb-4 space-y-3">
+                    <Link to="/" className="block underline">Home</Link>
+                    <Link to="/guides" className="block underline">Guides</Link>
+                    <Link to="/poster" className="block underline">Poster</Link>
+                    <Link to="/youtube-thumbnail" className="block underline">YouTube Thumbnail</Link>
+                  </div>
+                </DrawerContent>
+              </Drawer>
+            </div>
           </div>
         </header>
         <Routes>
