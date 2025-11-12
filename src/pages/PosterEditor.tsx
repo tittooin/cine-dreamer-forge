@@ -1244,117 +1244,143 @@ const PosterEditor = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <label className="text-sm">Heading</label>
-            <Input value={heading} onChange={(e)=>setHeading(e.target.value)} placeholder={lang==='hi'? 'AI इमेज मैजिक...' : lang==='mr'? 'AI इमेज मॅजिक...' : 'AI Image Magic Awaits!'} />
+        {/* Content section */}
+        <div className="rounded-lg border p-3 space-y-3">
+          <h3 className="text-sm font-medium">Content</h3>
+          <p className="text-xs text-muted-foreground">Heading, CTA aur bullets yahin likhen. Bullets har line par ek.</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm">Heading</label>
+              <Input value={heading} onChange={(e)=>setHeading(e.target.value)} placeholder={lang==='hi'? 'AI इमेज मैजिक...' : lang==='mr'? 'AI इमेज मॅजिक...' : 'AI Image Magic Awaits!'} />
+            </div>
+            <div>
+              <label className="text-sm">CTA</label>
+              <Input value={cta} onChange={(e)=>setCta(e.target.value)} placeholder={lang==='hi'? 'अभी शुरू करें...' : lang==='mr'? 'आता सुरू करा...' : 'Try it now...'} />
+            </div>
           </div>
           <div>
-            <label className="text-sm">CTA</label>
-            <Input value={cta} onChange={(e)=>setCta(e.target.value)} placeholder={lang==='hi'? 'अभी शुरू करें...' : lang==='mr'? 'आता सुरू करा...' : 'Try it now...'} />
-          </div>
-        </div>
-        <div>
-          <label className="text-sm">Bullets (one per line)</label>
-          <Textarea value={bullets} onChange={(e)=>setBullets(e.target.value)} className="min-h-[100px]" />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <div>
-            <label className="text-sm">Text Color</label>
-            <input type="color" className="w-full h-10" value={textColor} onChange={(e)=>setTextColor(e.target.value)} />
-          </div>
-          <div>
-            <label className="text-sm">Stroke Color</label>
-            <input type="color" className="w-full h-10" value={strokeColor} onChange={(e)=>setStrokeColor(e.target.value)} />
-          </div>
-          <div>
-            <label className="text-sm">Stroke Strength</label>
-            <input type="range" min={0.001} max={0.02} step={0.001} className="w-full" value={strokeStrength} onChange={(e)=>setStrokeStrength(Number(e.target.value))} />
-          </div>
-          <div>
-            <label className="text-sm">Align</label>
-            <select className="w-full h-10 bg-input border-border border rounded-md px-2" value={align} onChange={(e)=>setAlign(e.target.value as any)}>
-              <option value="left">Left</option>
-              <option value="center">Center</option>
-            </select>
+            <label className="text-sm">Bullets (ek line = ek point)</label>
+            <Textarea value={bullets} onChange={(e)=>setBullets(e.target.value)} className="min-h-[100px]" />
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div>
-            <label className="text-sm">Heading Weight</label>
-            <select className="w-full h-10 bg-input border border-border rounded-md px-2" value={headingWeight} onChange={(e)=>setHeadingWeight(e.target.value)}>
-              <option value="500">Medium</option>
-              <option value="600">Semibold</option>
-              <option value="700">Bold</option>
-            </select>
+        {/* Typography & Color section */}
+        <div className="rounded-lg border p-3 space-y-3">
+          <h3 className="text-sm font-medium">Typography & Colors</h3>
+          <p className="text-xs text-muted-foreground">Text ka rang, outline (bahar ki line) aur alignment set karein.</p>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div>
+              <label className="text-sm">Text Color</label>
+              <input type="color" className="w-full h-10" value={textColor} onChange={(e)=>setTextColor(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm">Outline Color</label>
+              <input type="color" className="w-full h-10" value={strokeColor} onChange={(e)=>setStrokeColor(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm">Outline Thickness</label>
+              <input type="range" min={0.001} max={0.02} step={0.001} className="w-full" value={strokeStrength} onChange={(e)=>setStrokeStrength(Number(e.target.value))} />
+            </div>
+            <div>
+              <label className="text-sm">Align</label>
+              <select className="w-full h-10 bg-input border-border border rounded-md px-2" value={align} onChange={(e)=>setAlign(e.target.value as any)}>
+                <option value="left">Left</option>
+                <option value="center">Center</option>
+              </select>
+            </div>
           </div>
-          <div>
-            <label className="text-sm">Bullet Weight</label>
-            <select className="w-full h-10 bg-input border border-border rounded-md px-2" value={bulletWeight} onChange={(e)=>setBulletWeight(e.target.value)}>
-              <option value="400">Normal</option>
-              <option value="500">Medium</option>
-            </select>
-          </div>
-          <div>
-            <label className="text-sm">CTA Weight</label>
-            <select className="w-full h-10 bg-input border border-border rounded-md px-2" value={ctaWeight} onChange={(e)=>setCtaWeight(e.target.value)}>
-              <option value="500">Medium</option>
-              <option value="600">Semibold</option>
-              <option value="700">Bold</option>
-            </select>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label className="text-sm">Heading Weight</label>
+              <select className="w-full h-10 bg-input border border-border rounded-md px-2" value={headingWeight} onChange={(e)=>setHeadingWeight(e.target.value)}>
+                <option value="500">Medium</option>
+                <option value="600">Semibold</option>
+                <option value="700">Bold</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-sm">Bullets Weight</label>
+              <select className="w-full h-10 bg-input border border-border rounded-md px-2" value={bulletWeight} onChange={(e)=>setBulletWeight(e.target.value)}>
+                <option value="400">Normal</option>
+                <option value="500">Medium</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-sm">CTA Weight</label>
+              <select className="w-full h-10 bg-input border border-border rounded-md px-2" value={ctaWeight} onChange={(e)=>setCtaWeight(e.target.value)}>
+                <option value="500">Medium</option>
+                <option value="600">Semibold</option>
+                <option value="700">Bold</option>
+              </select>
+            </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="flex items-center gap-2">
-            <input id="shadowEnabled" type="checkbox" className="h-4 w-4" checked={shadowEnabled} onChange={(e)=>setShadowEnabled(e.target.checked)} />
-            <label htmlFor="shadowEnabled" className="text-sm">Text shadow</label>
-          </div>
-          <div>
-            <label className="text-sm">Shadow Color</label>
-            <input type="color" className="w-full h-10" value={shadowColor} onChange={(e)=>setShadowColor(e.target.value)} />
-          </div>
-          <div>
-            <label className="text-sm">Shadow Blur</label>
-            <input type="range" min={0} max={0.03} step={0.002} className="w-full" value={shadowBlur} onChange={(e)=>setShadowBlur(Number(e.target.value))} />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="flex items-center gap-2">
-            <input id="headingBgEnabled" type="checkbox" className="h-4 w-4" checked={headingBgEnabled} onChange={(e)=>setHeadingBgEnabled(e.target.checked)} />
-            <label htmlFor="headingBgEnabled" className="text-sm">Heading band</label>
-          </div>
-          <div className="flex items-center gap-2">
-            <input id="bulletsBgEnabled" type="checkbox" className="h-4 w-4" checked={bulletsBgEnabled} onChange={(e)=>setBulletsBgEnabled(e.target.checked)} />
-            <label htmlFor="bulletsBgEnabled" className="text-sm">Bullets band</label>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <div>
-            <label className="text-sm">Heading Band Color</label>
-            <input type="color" className="w-full h-10" value={headingBgColor} onChange={(e)=>setHeadingBgColor(e.target.value)} />
-          </div>
-          <div>
-            <label className="text-sm">Heading Band Opacity</label>
-            <input type="range" min={0} max={0.8} step={0.05} className="w-full" value={headingBgOpacity} onChange={(e)=>setHeadingBgOpacity(Number(e.target.value))} />
-          </div>
-          <div>
-            <label className="text-sm">Bullets Band Color</label>
-            <input type="color" className="w-full h-10" value={bulletsBgColor} onChange={(e)=>setBulletsBgColor(e.target.value)} />
-          </div>
-          <div>
-            <label className="text-sm">Bullets Band Opacity</label>
-            <input type="range" min={0} max={0.8} step={0.05} className="w-full" value={bulletsBgOpacity} onChange={(e)=>setBulletsBgOpacity(Number(e.target.value))} />
+        {/* Effects section */}
+        <div className="rounded-lg border p-3 space-y-3">
+          <h3 className="text-sm font-medium">Effects</h3>
+          <p className="text-xs text-muted-foreground">Shadow se text ko thoda pop-banayein. Color aur blur set karein.</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="flex items-center gap-2">
+              <input id="shadowEnabled" type="checkbox" className="h-4 w-4" checked={shadowEnabled} onChange={(e)=>setShadowEnabled(e.target.checked)} />
+              <label htmlFor="shadowEnabled" className="text-sm">Text Shadow</label>
+            </div>
+            <div>
+              <label className="text-sm">Shadow Color</label>
+              <input type="color" className="w-full h-10" value={shadowColor} onChange={(e)=>setShadowColor(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm">Shadow Blur</label>
+              <input type="range" min={0} max={0.03} step={0.002} className="w-full" value={shadowBlur} onChange={(e)=>setShadowBlur(Number(e.target.value))} />
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={()=>{ setTextColor('#ffffff'); setStrokeColor('#000000'); setStrokeStrength(0.004); setBgEnabled(true); setBgColor('#000000'); setBgOpacity(0.35); setHeadingBgEnabled(true); setBulletsBgEnabled(true); setShadowEnabled(true); setShadowColor('#000000'); setShadowBlur(0.01); }}>Dark</Button>
-          <Button variant="outline" onClick={()=>{ setTextColor('#111111'); setStrokeColor('#ffffff'); setStrokeStrength(0.003); setBgEnabled(true); setBgColor('#ffffff'); setBgOpacity(0.4); setHeadingBgEnabled(true); setBulletsBgEnabled(true); setShadowEnabled(false); }}>Light</Button>
-          <Button variant="outline" onClick={()=>{ setTextColor('#ffffff'); setStrokeColor('#ff00ff'); setStrokeStrength(0.004); setBgEnabled(true); setBgColor('#7c3aed'); setBgOpacity(0.35); setHeadingBgEnabled(true); setBulletsBgEnabled(true); setShadowEnabled(true); setShadowColor('#7c3aed'); setShadowBlur(0.012); }}>Vibrant</Button>
+        {/* Highlights section */}
+        <div className="rounded-lg border p-3 space-y-3">
+          <h3 className="text-sm font-medium">Highlights</h3>
+          <p className="text-xs text-muted-foreground">Heading ya bullets ke peeche strip add karke readability badhayein.</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="flex items-center gap-2">
+              <input id="headingBgEnabled" type="checkbox" className="h-4 w-4" checked={headingBgEnabled} onChange={(e)=>setHeadingBgEnabled(e.target.checked)} />
+              <label htmlFor="headingBgEnabled" className="text-sm">Heading highlight strip</label>
+            </div>
+            <div className="flex items-center gap-2">
+              <input id="bulletsBgEnabled" type="checkbox" className="h-4 w-4" checked={bulletsBgEnabled} onChange={(e)=>setBulletsBgEnabled(e.target.checked)} />
+              <label htmlFor="bulletsBgEnabled" className="text-sm">Bullets highlight strip</label>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div>
+              <label className="text-sm">Heading Strip Color</label>
+              <input type="color" className="w-full h-10" value={headingBgColor} onChange={(e)=>setHeadingBgColor(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm">Heading Strip Opacity</label>
+              <input type="range" min={0} max={0.8} step={0.05} className="w-full" value={headingBgOpacity} onChange={(e)=>setHeadingBgOpacity(Number(e.target.value))} />
+            </div>
+            <div>
+              <label className="text-sm">Bullets Strip Color</label>
+              <input type="color" className="w-full h-10" value={bulletsBgColor} onChange={(e)=>setBulletsBgColor(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm">Bullets Strip Opacity</label>
+              <input type="range" min={0} max={0.8} step={0.05} className="w-full" value={bulletsBgOpacity} onChange={(e)=>setBulletsBgOpacity(Number(e.target.value))} />
+            </div>
+          </div>
+        </div>
+
+        {/* Presets */}
+        <div className="rounded-lg border p-3 space-y-2">
+          <h3 className="text-sm font-medium">Quick Presets</h3>
+          <p className="text-xs text-muted-foreground">Ek click me ready-made looks apply karein ya styles reset karein.</p>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button variant="outline" onClick={()=>{ setTextColor('#ffffff'); setStrokeColor('#000000'); setStrokeStrength(0.004); setBgEnabled(true); setBgColor('#000000'); setBgOpacity(0.35); setHeadingBgEnabled(true); setBulletsBgEnabled(true); setShadowEnabled(true); setShadowColor('#000000'); setShadowBlur(0.01); }}>Dark</Button>
+            <Button variant="outline" onClick={()=>{ setTextColor('#111111'); setStrokeColor('#ffffff'); setStrokeStrength(0.003); setBgEnabled(true); setBgColor('#ffffff'); setBgOpacity(0.4); setHeadingBgEnabled(true); setBulletsBgEnabled(true); setShadowEnabled(false); }}>Light</Button>
+            <Button variant="outline" onClick={()=>{ setTextColor('#ffffff'); setStrokeColor('#ff00ff'); setStrokeStrength(0.004); setBgEnabled(true); setBgColor('#7c3aed'); setBgOpacity(0.35); setHeadingBgEnabled(true); setBulletsBgEnabled(true); setShadowEnabled(true); setShadowColor('#7c3aed'); setShadowBlur(0.012); }}>Vibrant</Button>
+            <Button variant="secondary" onClick={()=>{ setTextColor('#ffffff'); setStrokeColor('#000000'); setStrokeStrength(0.002); setShadowEnabled(false); setHeadingBgEnabled(false); setBulletsBgEnabled(false); }}>Reset styles</Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
