@@ -1348,6 +1348,13 @@ const PosterEditor = () => {
           <Button variant="outline" onClick={()=>undo()}>Undo</Button>
           <Button variant="outline" onClick={()=>redo()}>Redo</Button>
         </div>
+
+        {/* Internal links footer for SEO */}
+        <div className="w-full border-t border-border mt-6 py-4 text-center text-xs text-muted-foreground">
+          <Link to="/" className="underline">Text to image generator</Link>
+          <span className="mx-2">•</span>
+          <Link to="/youtube-thumbnail" className="underline">YouTube thumbnail maker</Link>
+        </div>
       </div>
     </div>
     </EditorErrorBoundary>

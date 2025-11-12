@@ -570,9 +570,9 @@ const Index = () => {
             Describe your vision and instantly turn text into images. Our AI creates cinematic, realistic visuals suitable for thumbnails, posters, and social posts.
           </p>
           <div className="text-sm">
-            <a href={`${import.meta.env.BASE_URL}`} className="underline">Text to Image</a> ·
-            <Link to="/poster" className="underline ml-1">Poster Editor</Link> ·
-            <Link to="/youtube-thumbnail" className="underline ml-1">YouTube Thumbnail Maker</Link>
+            <a href={`${import.meta.env.BASE_URL}`} className="underline">Text to image generator</a> ·
+            <Link to="/poster" className="underline ml-1">YouTube thumbnail maker</Link> ·
+            <Link to="/youtube-thumbnail" className="underline ml-1">YouTube thumbnail tips</Link>
           </div>
           <h2 className="text-2xl font-bold mt-4">YouTube Thumbnail Maker</h2>
           <p className="text-sm text-muted-foreground">

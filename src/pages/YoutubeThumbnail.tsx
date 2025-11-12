@@ -51,8 +51,8 @@ const YoutubeThumbnail = () => {
             Make thumbnails that pop. Combine AI images, bold fonts, glow text, and cinematic effects to boost your click‑through rate.
           </p>
           <div className="flex gap-3 justify-center">
-            <Link to="/poster" className="inline-flex"><Button size="lg">Open Editor</Button></Link>
-            <a href={`${import.meta.env.BASE_URL}`} className="inline-flex"><Button variant="outline" size="lg">Generate Images</Button></a>
+            <Link to="/poster" className="inline-flex"><Button size="lg">Open YouTube thumbnail maker</Button></Link>
+            <a href={`${import.meta.env.BASE_URL}`} className="inline-flex"><Button variant="outline" size="lg">Use text to image generator</Button></a>
           </div>
         </div>
 
@@ -88,6 +88,13 @@ const YoutubeThumbnail = () => {
             <Card className="p-4"><div className="font-medium">Can I combine AI images and text?</div><div className="text-sm text-muted-foreground">Yes. Generate with AI on the home page, then compose text and effects in the Poster editor.</div></Card>
             <Card className="p-4"><div className="font-medium">Is it free?</div><div className="text-sm text-muted-foreground">You can try with low‑cost credits. We keep it affordable for creators.</div></Card>
           </div>
+        </div>
+
+        {/* Internal links: help search engines and users navigate */}
+        <div className="text-center text-sm text-muted-foreground">
+          <Link to="/" className="underline">Text to image generator</Link>
+          <span className="mx-2">•</span>
+          <Link to="/poster" className="underline">YouTube thumbnail maker</Link>
         </div>
       </div>
 
