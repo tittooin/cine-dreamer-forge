@@ -73,7 +73,8 @@ const App = () => (
           <Route path="/terms" element={<Terms />} />
           {/* Shipping route removed */}
           <Route path="/refunds" element={<Refunds />} />
-          <Route path="/youtube-thumbnail" element={<YoutubeThumbnail />} />
+          {/* Map YouTube Thumbnail route directly to the editor so canvas is visible */}
+          <Route path="/youtube-thumbnail" element={<PosterEditor />} />
           <Route path="/guides" element={<Guides />} />
           <Route path="/guides/text-to-image-prompts-cinematic-shots" element={<GuideCinematicPrompts />} />
           <Route path="/guides/youtube-thumbnail-best-practices-ctr" element={<GuideYoutubeCTR />} />
