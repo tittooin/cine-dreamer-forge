@@ -1,0 +1,13 @@
+{
+  "id": "tmpl_neon_party",
+  "name": "Neon Party",
+  "thumbnail": "https://via.placeholder.com/300x200.png?text=Neon+Party",
+  "canvasJSON": {
+    "version": "5.3.0",
+    "objects": [
+      { "type": "rect", "left": 0, "top": 0, "width": 1280, "height": 720, "fill": "#0a0f1f" },
+      { "type": "textbox", "left": 100, "top": 120, "text": "NEON PARTY", "fontFamily": "Poppins", "fontSize": 140, "fill": "#22d3ee", "stroke": "#7c3aed", "strokeWidth": 4, "fontWeight": "900" },
+      { "type": "textbox", "left": 100, "top": 280, "text": "Tonight 9PM", "fontFamily": "Inter", "fontSize": 64, "fill": "#ffffff" }
+    ]
+  }
+}

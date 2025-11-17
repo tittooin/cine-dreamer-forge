@@ -1,3 +1,6 @@
+/* Brand fonts: Poppins for headings, Inter for body */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -8,76 +11,92 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
+    /* Black & White light theme */
+    --background: 0 0% 100%; /* White */
+    --foreground: 0 0% 10%;  /* Near Black */
 
-    --card: 240 10% 6%;
-    --card-foreground: 0 0% 98%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
 
-    --popover: 240 10% 6%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
 
-    /* Monochrome theme primary colors */
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 10% 3.9%;
-    --primary-glow: 0 0% 85%;
+    /* Primary and accent set to grayscale */
+    --primary: 0 0% 10%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 0 0% 20%;
 
-    --secondary: 240 10% 12%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 0 0% 20%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 240 10% 15%;
-    --muted-foreground: 240 5% 65%;
+    --muted: 210 30% 92%;
+    --muted-foreground: 210 90% 40%;
 
-    --accent: 0 0% 90%;
-    --accent-foreground: 240 10% 3.9%;
+    --accent: 0 0% 30%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
+    /* Utility status tokens in grayscale */
+    --success: 0 0% 30%;
+    --success-foreground: 0 0% 100%;
+    --warning: 0 0% 50%;
+    --warning-foreground: 0 0% 10%;
 
-    --border: 240 10% 15%;
-    --input: 240 10% 12%;
-    --ring: 263 70% 50%;
+    --destructive: 0 0% 20%;
+    --destructive-foreground: 0 0% 100%;
 
+    /* Subtle borders and inputs */
+    --border: 0 0% 86%;
+    --input: 0 0% 94%;
+    --ring: 0 0% 10%;
+
+    /* Brand radius: keep 12px */
     --radius: 0.75rem;
 
-    --gradient-primary: linear-gradient(135deg, hsl(0 0% 98%), hsl(0 0% 90%));
-    --gradient-secondary: linear-gradient(135deg, hsl(0 0% 80%), hsl(0 0% 95%));
-    --gradient-accent: linear-gradient(135deg, hsl(0 0% 90%), hsl(0 0% 85%));
+    /* Monochrome gradients and glows */
+    --gradient-primary: linear-gradient(135deg, hsl(0 0% 10%), hsl(0 0% 70%));
+    --gradient-secondary: linear-gradient(135deg, hsl(0 0% 20%), hsl(0 0% 80% / 0.15));
+    --gradient-accent: linear-gradient(135deg, hsl(0 0% 40% / 0.15), hsl(0 0% 70% / 0.15));
     
-    --glow-primary: 0 0 40px hsl(0 0% 95% / 0.25);
-    --glow-accent: 0 0 40px hsl(0 0% 90% / 0.25);
+    --glow-primary: 0 0 40px hsl(0 0% 40% / 0.35);
+    --glow-accent: 0 0 40px hsl(0 0% 60% / 0.35);
     
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
+    /* Black & White dark theme */
+    --background: 0 0% 7%;   /* Near Black */
+    --foreground: 0 0% 96%;  /* White */
 
-    --card: 240 10% 6%;
-    --card-foreground: 0 0% 98%;
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 96%;
 
-    --popover: 240 10% 6%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 96%;
 
-    --primary: 263 70% 50%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 0 0% 100%;
+    --primary-foreground: 0 0% 10%;
 
-    --secondary: 240 10% 12%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 0 0% 20%;
+    --secondary-foreground: 0 0% 96%;
 
-    --muted: 240 10% 15%;
-    --muted-foreground: 240 5% 65%;
+    --muted: 210 20% 20%;
+    --muted-foreground: 210 95% 75%;
 
-    --accent: 316 70% 50%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 0 0% 80%;
+    --accent-foreground: 0 0% 10%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
+    --success: 0 0% 70%;
+    --success-foreground: 0 0% 10%;
+    --warning: 0 0% 60%;
+    --warning-foreground: 0 0% 10%;
 
-    --border: 240 10% 15%;
-    --input: 240 10% 12%;
-    --ring: 263 70% 50%;
+    --destructive: 0 0% 30%;
+    --destructive-foreground: 0 0% 96%;
+
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 0 0% 90%;
   }
 }
 
@@ -89,5 +108,10 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground;
     font-family: 'Inter', 'Noto Sans Devanagari', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+  }
+  h1, h2, h3, h4 {
+    font-family: 'Poppins', 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+    font-weight: 600;
+    letter-spacing: 0.2px;
   }
 }

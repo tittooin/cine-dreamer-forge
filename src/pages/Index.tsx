@@ -32,6 +32,16 @@ const Index = () => {
   const [utrInput, setUtrInput] = useState("");
   // Poster editing moved to dedicated page (/poster)
 
+  const firstNameFromEmail = (email: string | null) => {
+    if (!email) return null;
+    try {
+      const local = String(email).split('@')[0];
+      const token = local.split(/[._\-+]/)[0];
+      if (!token) return null;
+      return token.charAt(0).toUpperCase() + token.slice(1);
+    } catch { return null; }
+  };
+
   useEffect(() => {
     let mounted = true;
     const init = async () => {
@@ -140,7 +150,7 @@ const Index = () => {
 
   // Stripe Upgrade flow removed; using UPI/Razorpay gating instead
 
-  const watermarkSrc = `${import.meta.env.BASE_URL}logo.png`;
+  // Watermark disabled: no overlay or compositing on download
 
   // SEO: page title and description tuned for ranking on key terms
   useEffect(() => {
@@ -153,59 +163,17 @@ const Index = () => {
 
   const handleDownload = async () => {
     if (!generatedImage) return;
-
     try {
-      const baseImg = new Image();
-      baseImg.crossOrigin = "anonymous";
-      baseImg.src = generatedImage;
-      await new Promise<void>((resolve, reject) => {
-        baseImg.onload = () => resolve();
-        baseImg.onerror = () => reject(new Error("Failed to load base image"));
-      });
-
-      const wmImg = new Image();
-      wmImg.crossOrigin = "anonymous";
-      wmImg.src = watermarkSrc;
-      await new Promise<void>((resolve, reject) => {
-        wmImg.onload = () => resolve();
-        wmImg.onerror = () => reject(new Error("Failed to load watermark"));
-      });
-
-      const canvas = document.createElement("canvas");
-      canvas.width = baseImg.naturalWidth;
-      canvas.height = baseImg.naturalHeight;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("Canvas not supported");
-
-      ctx.drawImage(baseImg, 0, 0);
-      const margin = Math.floor(canvas.width * 0.02);
-      const wmWidth = Math.floor(canvas.width * 0.08);
-      const wmAspect = wmImg.naturalWidth / wmImg.naturalHeight;
-      const wmHeight = Math.floor(wmWidth / wmAspect);
-      const x = canvas.width - wmWidth - margin;
-      const y = margin;
-      ctx.globalAlpha = 0.6;
-      ctx.drawImage(wmImg, x, y, wmWidth, wmHeight);
-
-      // Poster editing now happens on /poster page only
-
-      const dataUrl = canvas.toDataURL("image/png");
-      const link = document.createElement("a");
-      link.href = dataUrl;
-      link.download = `ai-generated-${Date.now()}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      toast.success("Watermarked image downloaded!");
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to watermark. Downloading original.");
       const link = document.createElement("a");
       link.href = generatedImage;
       link.download = `ai-generated-${Date.now()}.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      toast.success("Image downloaded!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Download failed. Please try again.");
     }
   };
 
@@ -323,11 +291,11 @@ const Index = () => {
   return (
     <>
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 relative overflow-hidden">
-      {/* Auth header */}
-      <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
+      {/* Auth header (placed in normal flow, right-aligned) */}
+      <div className="w-full max-w-4xl mx-auto px-4 pt-4 flex justify-end items-center gap-2 flex-wrap relative z-20">
         {userEmail ? (
           <>
-            <span className="text-sm text-muted-foreground">Logged in as {userEmail}</span>
+            <span className="text-sm text-muted-foreground">Logged in as {firstNameFromEmail(userEmail) || userEmail}</span>
             {!isMultiAccount && usage && (() => {
               const credits = typeof (usage as any).credits === "number" ? (usage as any).credits as number : usage.remaining;
               const color = credits <= 5 ? "bg-red-500/15 text-red-600 border-red-500/30" : credits <= 10 ? "bg-orange-500/15 text-orange-600 border-orange-500/30" : "bg-green-500/15 text-green-700 border-green-500/30";
@@ -369,8 +337,8 @@ const Index = () => {
       </div>
 
       {/* Payment modal disabled: using Razorpay Payment Page temporarily */}
-      {/* Animated gradient background */}
-      <div className="absolute inset-0 opacity-20">
+      {/* Animated gradient background (do not intercept clicks) */}
+      <div className="absolute inset-0 opacity-20 pointer-events-none">
         <div className="absolute top-0 -left-4 w-96 h-96 bg-primary rounded-full mix-blend-multiply filter blur-3xl animate-pulse" />
         <div className="absolute top-0 -right-4 w-96 h-96 bg-accent rounded-full mix-blend-multiply filter blur-3xl animate-pulse delay-75" />
         <div className="absolute -bottom-8 left-20 w-96 h-96 bg-primary-glow rounded-full mix-blend-multiply filter blur-3xl animate-pulse delay-150" />
@@ -390,103 +358,7 @@ const Index = () => {
             </Link>
           </div>
         </Card>
-        {(
-          <div className="bg-card border border-border rounded-2xl p-6 space-y-4 shadow-2xl">
-            <h3 className="text-xl font-semibold">Pricing</h3>
-            <p className="text-xs text-muted-foreground">Choose a bundle and pay via Google Pay (UPI).</p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="border border-border rounded-xl p-4 space-y-2">
-                <h4 className="text-lg font-medium">Per Image</h4>
-                <div className="text-2xl font-bold">₹{A1}</div>
-                <p className="text-xs text-muted-foreground">1 credit for a single image</p>
-                <div className="flex gap-2">
-                  <Button className="w-full" onClick={() => startGPay(A1, "Per Image (1 credit)")}>Buy</Button>
-                </div>
-              </div>
-              <div className="border border-border rounded-xl p-4 space-y-2">
-                <h4 className="text-lg font-medium">Bundle (5)</h4>
-                <div className="text-2xl font-bold">₹{A2}</div>
-                <p className="text-xs text-muted-foreground">5 credits — discounted</p>
-                <div className="flex gap-2">
-                  <Button className="w-full" onClick={() => startGPay(A2, "Bundle (5 credits)")}>Buy</Button>
-                </div>
-              </div>
-              <div className="border border-border rounded-xl p-4 space-y-2">
-                <h4 className="text-lg font-medium">Monthly (50)</h4>
-                <div className="text-2xl font-bold">₹{A3}</div>
-                <p className="text-xs text-muted-foreground">50 credits per month</p>
-                <div className="flex gap-2">
-                  <Button className="w-full" onClick={() => startGPay(A3, "Monthly (50 credits)")}>Buy</Button>
-                </div>
-              </div>
-            </div>
-            {showUpiHelp && upiIntent && (
-              <div className="mt-4 p-3 border rounded-lg bg-muted/20">
-                <div className="text-xs text-muted-foreground mb-2">Payment didn’t open. Scan the QR with Google Pay on mobile or copy the UPI link.</div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
-                  <div className="flex justify-center md:justify-start">
-                    <div className="bg-white p-3 rounded-md border">
-                      <QRCode value={upiIntent} size={140} />
-                    </div>
-                  </div>
-                  <div className="md:col-span-2 flex items-center gap-2">
-                    <Input readOnly value={upiIntent} className="text-[11px]" aria-label="UPI payment link" />
-                    <Button
-                      variant="outline"
-                      onClick={async () => {
-                        try { await navigator.clipboard.writeText(upiIntent); toast.success("UPI link copied"); }
-                        catch { toast.error("Copy failed. Select and copy manually."); }
-                      }}
-                    >Copy</Button>
-                    <a href={upiIntent} className="inline-flex">
-                      <Button variant="default">Open in UPI app</Button>
-                    </a>
-                  </div>
-                </div>
-                <div className="mt-2 text-[11px] text-muted-foreground">Payee: {GPAY_NAME} • VPA: {GPAY_VPA}</div>
-                {currentPaymentId && (
-                  <div className="mt-3 flex items-center gap-2">
-                    <Input
-                      placeholder="Enter UPI Transaction ID (UTR)"
-                      value={utrInput}
-                      onChange={(e) => setUtrInput(e.target.value)}
-                      className="text-[12px]"
-                      aria-label="UPI Transaction ID"
-                    />
-                    <Button
-                      onClick={async () => {
-                        const utr = utrInput.trim();
-                        if (utr.length < 6) { toast.error("Please enter valid UTR"); return; }
-                        if (!currentPaymentId) { toast.error("Payment not initialized"); return; }
-                        try {
-                          const { data, error } = await supabase.functions.invoke("confirm-upi-payment", {
-                            body: { payment_id: currentPaymentId, utr },
-                          });
-                          if (error) { throw error; }
-                          if (data && data.ok) {
-                            toast.success("Payment confirmed. Credits added.");
-                            setShowUpiHelp(false);
-                            setUtrInput("");
-                            setCurrentPaymentId(null);
-                            try {
-                              const { data: u } = await supabase.functions.invoke("usage-status");
-                              if (u && typeof u.count === "number") setUsage({ count: u.count, limit: u.limit, remaining: u.remaining });
-                            } catch {}
-                          } else {
-                            toast.error("Unable to confirm payment");
-                          }
-                        } catch (e) {
-                          console.error("confirm-upi-payment failed:", e);
-                          toast.error("Payment confirmation failed");
-                        }
-                      }}
-                    >Confirm Payment</Button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+        {/* Pricing moved to dedicated page (/pricing) */}
         {/* Header */}
         <div className="text-center space-y-4">
           <div className="inline-flex items-center gap-3 px-4 py-2 bg-card border border-border rounded-full">
@@ -546,12 +418,7 @@ const Index = () => {
                 alt="Generated"
                 className="w-full h-auto rounded-xl shadow-2xl"
               />
-              {/* Watermark overlay (top-right) */}
-              <img
-                src={watermarkSrc}
-                alt="watermark"
-                className="absolute top-3 right-3 w-10 h-10 opacity-60 select-none pointer-events-none"
-              />
+              {/* Watermark overlay removed */}
               <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl flex items-end justify-center pb-6">
                 <Button
                   onClick={handleDownload}
@@ -575,7 +442,7 @@ const Index = () => {
           </p>
           <div className="text-sm">
             <a href={`${import.meta.env.BASE_URL}`} className="underline">Text to image generator</a> ·
-            <Link to="/poster" className="underline ml-1">YouTube thumbnail maker</Link> ·
+            <Link to="/youtube-thumbnail" className="underline ml-1">YouTube thumbnail maker</Link> ·
             <Link to="/youtube-thumbnail" className="underline ml-1">YouTube thumbnail tips</Link>
           </div>
           <h2 className="text-2xl font-bold mt-4">YouTube Thumbnail Maker</h2>

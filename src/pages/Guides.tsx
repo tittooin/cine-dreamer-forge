@@ -19,7 +19,7 @@ const Guides = () => {
           <p className="text-muted-foreground">Prompts, tips, and workflows to get better results.</p>
           <div className="flex gap-3 justify-center">
             <a href={`${import.meta.env.BASE_URL}`} className="inline-flex"><Button variant="outline">Text to image generator</Button></a>
-            <Link to="/poster" className="inline-flex"><Button>YouTube thumbnail maker</Button></Link>
+            <Link to="/youtube-thumbnail" className="inline-flex"><Button>YouTube thumbnail maker</Button></Link>
           </div>
         </div>
 
@@ -39,7 +39,7 @@ const Guides = () => {
         <div className="text-center text-sm text-muted-foreground">
           <a href={`${import.meta.env.BASE_URL}`} className="underline">Text to image generator</a>
           <span className="mx-2">•</span>
-          <Link to="/poster" className="underline">YouTube thumbnail maker</Link>
+          <Link to="/youtube-thumbnail" className="underline">YouTube thumbnail maker</Link>
         </div>
       </div>
     </div>

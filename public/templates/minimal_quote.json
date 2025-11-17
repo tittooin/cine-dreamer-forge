@@ -1,0 +1,13 @@
+{
+  "id": "tmpl_minimal_quote",
+  "name": "Minimal Quote",
+  "thumbnail": "https://via.placeholder.com/300x200.png?text=Minimal+Quote",
+  "canvasJSON": {
+    "version": "5.3.0",
+    "objects": [
+      { "type": "rect", "left": 0, "top": 0, "width": 1080, "height": 1080, "fill": "#111827" },
+      { "type": "textbox", "left": 120, "top": 160, "text": "“Design is intelligence made visible.”", "fontFamily": "Poppins", "fontSize": 72, "fill": "#ffffff", "fontWeight": "700" },
+      { "type": "textbox", "left": 120, "top": 360, "text": "— Alina Wheeler", "fontFamily": "Inter", "fontSize": 48, "fill": "#9ca3af" }
+    ]
+  }
+}

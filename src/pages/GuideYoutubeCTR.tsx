@@ -47,7 +47,7 @@ const GuideYoutubeCTR = () => {
           <h1 className="text-4xl md:text-5xl font-bold">YouTube Thumbnail Best Practices for CTR</h1>
           <p className="text-muted-foreground">Design bold, clear thumbnails that get clicks. Focus, contrast, and legibility.</p>
           <div className="flex gap-3">
-            <Link to="/poster" className="inline-flex"><Button>YouTube thumbnail maker</Button></Link>
+            <Link to="/youtube-thumbnail" className="inline-flex"><Button>YouTube thumbnail maker</Button></Link>
             <a href={`${import.meta.env.BASE_URL}`} className="inline-flex"><Button variant="outline">Text to image generator</Button></a>
           </div>
         </div>
@@ -84,7 +84,7 @@ const GuideYoutubeCTR = () => {
         <div className="text-sm text-muted-foreground">
           <Link to="/guides/text-to-image-prompts-cinematic-shots" className="underline">Text to image prompts for cinematic shots</Link>
           <span className="mx-2">•</span>
-          <Link to="/poster" className="underline">YouTube thumbnail maker</Link>
+          <Link to="/youtube-thumbnail" className="underline">YouTube thumbnail maker</Link>
           <span className="mx-2">•</span>
           <a href={`${import.meta.env.BASE_URL}`} className="underline">Text to image generator</a>
         </div>

@@ -1,0 +1,14 @@
+{
+  "id": "tmpl_modern_sale",
+  "name": "Modern Sale",
+  "thumbnail": "https://via.placeholder.com/300x200.png?text=Modern+Sale",
+  "canvasJSON": {
+    "version": "5.3.0",
+    "objects": [
+      { "type": "rect", "left": 0, "top": 0, "width": 1280, "height": 720, "fill": "#0a0f1f" },
+      { "type": "rect", "left": 80, "top": 80, "width": 1120, "height": 560, "fill": "#262c55", "rx": 32, "ry": 32 },
+      { "type": "textbox", "left": 120, "top": 120, "text": "BIG SALE", "fontFamily": "Poppins", "fontSize": 120, "fill": "#7c3aed", "fontWeight": "800" },
+      { "type": "textbox", "left": 120, "top": 260, "text": "Up to 70% Off", "fontFamily": "Inter", "fontSize": 64, "fill": "#22d3ee", "fontWeight": "700" }
+    ]
+  }
+}

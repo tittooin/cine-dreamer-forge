@@ -1,0 +1,13 @@
+{
+  "id": "tmpl_travel_poster",
+  "name": "Travel Poster",
+  "thumbnail": "https://via.placeholder.com/300x200.png?text=Travel+Poster",
+  "canvasJSON": {
+    "version": "5.3.0",
+    "objects": [
+      { "type": "rect", "left": 0, "top": 0, "width": 1280, "height": 720, "fill": "#0a0f1f" },
+      { "type": "textbox", "left": 80, "top": 80, "text": "EXPLORE THE WORLD", "fontFamily": "Poppins", "fontSize": 96, "fill": "#ffffff", "fontWeight": "800" },
+      { "type": "textbox", "left": 80, "top": 180, "text": "Adventure Awaits", "fontFamily": "Inter", "fontSize": 56, "fill": "#22d3ee" }
+    ]
+  }
+}

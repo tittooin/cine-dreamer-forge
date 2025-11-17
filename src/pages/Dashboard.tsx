@@ -15,6 +15,16 @@ const Dashboard = () => {
   const [items, setItems] = useState<PaymentItem[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const firstNameFromEmail = (email: string | null) => {
+    if (!email) return null;
+    try {
+      const local = String(email).split('@')[0];
+      const token = local.split(/[._\-+]/)[0];
+      if (!token) return null;
+      return token.charAt(0).toUpperCase() + token.slice(1);
+    } catch { return null; }
+  };
+
   useEffect(() => {
     let mounted = true;
     const init = async () => {
@@ -76,7 +86,7 @@ const Dashboard = () => {
         </div>
 
         {userEmail ? (
-          <div className="text-sm text-muted-foreground">Logged in as {userEmail}</div>
+      <div className="text-sm text-muted-foreground">Logged in as {firstNameFromEmail(userEmail) || userEmail}</div>
         ) : (
           <div className="text-sm">Please login to view your credits.</div>
         )}
